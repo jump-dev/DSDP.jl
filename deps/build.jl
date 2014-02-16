@@ -14,12 +14,14 @@ provides(Sources, URI("http://www.mcs.anl.gov/hs/software/DSDP/$DSDPname.tar.gz"
 patchdir=BinDeps.depsdir(libdsdp)
 srcdir = joinpath(patchdir,"src",DSDPname) 
 libdir = joinpath(srcdir,"lib")
+usrdir = BinDeps.usrdir(libdsdp)
 
 if OS_NAME == :Darwin ext = "dylib" else ext = "so" end
 
 provides(SimpleBuild,
     (@build_steps begin
         GetSources(libdsdp)
+        CreateDirectory(joinpath(usrdir,"lib"))
         @build_steps begin
             ChangeDirectory(srcdir)
             `echo "DSDPROOT=$srcdir"` >> "make.include"
@@ -28,7 +30,7 @@ provides(SimpleBuild,
             `cat $patchdir/g2c_1.patch`  |> `patch -N -p0`
             `cat $patchdir/g2c_2.patch`  |> `patch -N -p0`
             `make`
-            `cc -shared $libdir/libdsdp.a -o $libdir/libdsdp.$ext`
+            `cc -shared $libdir/libdsdp.a -o $usrdir/lib/libdsdp.$ext`
         end
     end),[libdsdp], os = :Unix)
 
