@@ -15,7 +15,7 @@ julia> Pkg.add("https://github.com/joehuchette/DSDP.jl.git")
 julia> Pkg.build("DSDP")
 ```
 
-The `Pkg.build` command will compile SDPA from source, you will need to install the following dependencies for the compilation to work.
+The `Pkg.build` command will compile DSDP from source, you will need to install the following dependencies for the compilation to work.
 
 ### Ubuntu
 ```sh
