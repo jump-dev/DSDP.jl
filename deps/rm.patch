@@ -1,0 +1,11 @@
+--- make.include
++++ make.include
+@@ -82,7 +82,7 @@ EXECDIR = ${DSDPROOT}/bin/
+ ARCH     = ar cr
+ RANLIB   = ranlib
+ #RANLIB   = echo
+-RM       = rm -f
++RM       = rm -rf
+ MV       = mv
+ CP	 = cp
+ 
