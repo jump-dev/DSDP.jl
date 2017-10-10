@@ -29,6 +29,9 @@ provides(SimpleBuild,
             pipeline(`patch -N -p0`, stdin="$patchdir/g2c_2.patch")
             pipeline(`patch -N -p0`, stdin="$patchdir/shared.patch")
             pipeline(`patch -N -p0`, stdin="$patchdir/rm.patch")
+            @static if is_apple()
+                pipeline(`patch -N -p0`, stdin="$patchdir/apple.patch")
+            end
             `make`
             `make oshared`
             `mv $libdir/libdsdp.$(Libdl.dlext) $usrdir/lib/libdsdp.$(Libdl.dlext)`
