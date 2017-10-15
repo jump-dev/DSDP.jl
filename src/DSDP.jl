@@ -6,6 +6,7 @@ else
     error("DSDP not properly installed. Please run Pkg.build(\"DSDP\")")
 end
 
+const DSDPT = Ptr{Void}
 const SDPCone = Ptr{Void}
 const BCone = Ptr{Void}
 const LPCone = Ptr{Void}
