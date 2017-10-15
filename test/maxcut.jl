@@ -89,8 +89,7 @@ function maxcut(nnodes, edges)
 
     DSDP.Setup(dsdp)
 
-    info = DSDP.Solve(dsdp)
-    iszero(info) || error("Numerical error")
+    DSDP.Solve(dsdp)
     reason = DSDP.StopReason(dsdp)
 
     @test reason != DSDP.DSDP_INFEASIBLE_START
