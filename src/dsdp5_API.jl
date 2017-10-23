@@ -32,289 +32,6 @@ function Destroy(dsdp::DSDPT)
     @dsdp_ccall DSDPDestroy (DSDPT,) dsdp
 end
 
-function CreateBCone(dsdp::DSDPT)
-    bcone = Ref{BCone}()
-    @dsdp_ccall DSDPCreateBCone (DSDPT, Ref{BCone}) dsdp bcone
-    bcone[]
-end
-
-function BConeAllocateBounds(arg1::BCone, arg2::Integer)
-    @dsdp_ccall BConeAllocateBounds (BCone, Cint) arg1 arg2
-end
-
-function BConeSetLowerBound(arg1::BCone, arg2::Integer, arg3::Cdouble)
-    @dsdp_ccall BConeSetLowerBound (BCone, Cint, Cdouble) arg1 arg2 arg3
-end
-
-function BConeSetUpperBound(arg1::BCone, arg2::Integer, arg3::Cdouble)
-    @dsdp_ccall BConeSetUpperBound (BCone, Cint, Cdouble) arg1 arg2 arg3
-end
-
-function BConeSetPSlackVariable(arg1::BCone, arg2::Integer)
-    @dsdp_ccall BConeSetPSlackVariable (BCone, Cint) arg1 arg2
-end
-
-function BConeSetPSurplusVariable(arg1::BCone, arg2::Integer)
-    @dsdp_ccall BConeSetPSurplusVariable (BCone, Cint) arg1 arg2
-end
-
-function BConeScaleBarrier(arg1::BCone, arg2::Cdouble)
-    @dsdp_ccall BConeScaleBarrier (BCone, Cdouble) arg1 arg2
-end
-
-function BConeView(arg1::BCone)
-    @dsdp_ccall BConeView (BCone,) arg1
-end
-
-function BConeSetXArray(arg1::BCone, arg2, arg3::Integer)
-    @dsdp_ccall BConeSetXArray (BCone, Ptr{Cdouble}, Cint) arg1 arg2 arg3
-end
-
-function BConeCopyX(arg1::BCone, arg2, arg3, arg4::Integer)
-    @dsdp_ccall BConeCopyX (BCone, Ptr{Cdouble}, Ptr{Cdouble}, Cint) arg1 arg2 arg3 arg4
-end
-
-function BoundDualVariables(dsdp::DSDPT, arg2::Cdouble, arg3::Cdouble)
-    @dsdp_ccall DSDPBoundDualVariables (DSDPT, Cdouble, Cdouble) dsdp arg2 arg3
-end
-
-function SetYBounds(dsdp::DSDPT, arg2::Cdouble, arg3::Cdouble)
-    @dsdp_ccall DSDPSetYBounds (DSDPT, Cdouble, Cdouble) dsdp arg2 arg3
-end
-
-function GetYBounds(dsdp::DSDPT, arg2, arg3)
-    @dsdp_ccall DSDPGetYBounds (DSDPT, Ptr{Cdouble}, Ptr{Cdouble}) dsdp arg2 arg3
-end
-
-function CreateLPCone(dsdp::DSDPT, arg2)
-    @dsdp_ccall DSDPCreateLPCone (DSDPT, Ptr{LPCone}) dsdp arg2
-end
-
-function LPConeSetData(arg1::LPCone, arg2::Integer, arg3, arg4, arg5)
-    @dsdp_ccall LPConeSetData (LPCone, Cint, Ptr{Cint}, Ptr{Cint}, Ptr{Cdouble}) arg1 arg2 arg3 arg4 arg5
-end
-
-function LPConeSetData2(arg1::LPCone, arg2::Integer, arg3, arg4, arg5)
-    @dsdp_ccall LPConeSetData2 (LPCone, Cint, Ptr{Cint}, Ptr{Cint}, Ptr{Cdouble}) arg1 arg2 arg3 arg4 arg5
-end
-
-function LPConeGetData(arg1::LPCone, arg2::Integer, arg3, arg4::Integer)
-    @dsdp_ccall LPConeGetData (LPCone, Cint, Ptr{Cdouble}, Cint) arg1 arg2 arg3 arg4
-end
-
-function LPConeScaleBarrier(arg1::LPCone, arg2::Cdouble)
-    @dsdp_ccall LPConeScaleBarrier (LPCone, Cdouble) arg1 arg2
-end
-
-function LPConeGetXArray(arg1::LPCone, arg2, arg3)
-    @dsdp_ccall LPConeGetXArray (LPCone, Ptr{Ptr{Cdouble}}, Ptr{Cint}) arg1 arg2 arg3
-end
-
-function LPConeGetSArray(arg1::LPCone, arg2, arg3)
-    @dsdp_ccall LPConeGetSArray (LPCone, Ptr{Ptr{Cdouble}}, Ptr{Cint}) arg1 arg2 arg3
-end
-
-function LPConeGetDimension(arg1::LPCone, arg2)
-    @dsdp_ccall LPConeGetDimension (LPCone, Ptr{Cint}) arg1 arg2
-end
-
-function LPConeView(lpcone::LPCone)
-    @dsdp_ccall LPConeView (LPCone,) lpcone
-end
-
-function LPConeView2(lpcone::LPCone)
-    @dsdp_ccall LPConeView2 (LPCone,) lpcone
-end
-
-function LPConeCopyS(arg1::LPCone, arg2, arg3::Integer)
-    @dsdp_ccall LPConeCopyS (LPCone, Ptr{Cdouble}, Cint) arg1 arg2 arg3
-end
-
-function CreateSDPCone(dsdp::DSDPT, n::Integer)
-    sdpcone = Ref{SDPCone}()
-    @dsdp_ccall DSDPCreateSDPCone (DSDPT, Cint, Ref{SDPCone}) dsdp n sdpcone
-    sdpcone[]
-end
-function CreateSDPCone(dsdp::DSDPT, arg2::Integer, arg3)
-    @dsdp_ccall DSDPCreateSDPCone (DSDPT, Cint, Ptr{SDPCone}) dsdp arg2 arg3
-end
-
-function SDPConeSetBlockSize(sdpcone::SDPCone, i::Integer, j::Integer)
-    @dsdp_ccall SDPConeSetBlockSize (SDPCone, Cint, Cint) sdpcone i j
-end
-
-function SDPConeGetBlockSize(arg1::SDPCone, arg2::Integer, arg3)
-    @dsdp_ccall SDPConeGetBlockSize (SDPCone, Cint, Ptr{Cint}) arg1 arg2 arg3
-end
-
-function SDPConeSetStorageFormat(arg1::SDPCone, arg2::Integer, arg3::UInt8)
-    @dsdp_ccall SDPConeSetStorageFormat (SDPCone, Cint, UInt8) arg1 arg2 arg3
-end
-
-function SDPConeGetStorageFormat(arg1::SDPCone, arg2::Integer, arg3)
-    @dsdp_ccall SDPConeGetStorageFormat (SDPCone, Cint, Cstring) arg1 arg2 arg3
-end
-
-function SDPConeCheckStorageFormat(arg1::SDPCone, arg2::Integer, arg3::UInt8)
-    @dsdp_ccall SDPConeCheckStorageFormat (SDPCone, Cint, UInt8) arg1 arg2 arg3
-end
-
-function SDPConeSetSparsity(arg1::SDPCone, arg2::Integer, arg3::Integer)
-    @dsdp_ccall SDPConeSetSparsity (SDPCone, Cint, Cint) arg1 arg2 arg3
-end
-
-function SDPConeView(arg1::SDPCone)
-    @dsdp_ccall SDPConeView (SDPCone,) arg1
-end
-
-function SDPConeView2(arg1::SDPCone)
-    @dsdp_ccall SDPConeView2 (SDPCone,) arg1
-end
-
-function SDPConeView3(arg1::SDPCone)
-    @dsdp_ccall SDPConeView3 (SDPCone,) arg1
-end
-
-function SDPConeSetASparseVecMat(arg1::SDPCone, arg2::Integer, arg3::Integer, arg4::Integer, arg5::Cdouble, arg6::Integer, arg7, arg8, arg9::Integer)
-    @dsdp_ccall SDPConeSetASparseVecMat (SDPCone, Cint, Cint, Cint, Cdouble, Cint, Ptr{Cint}, Ptr{Cdouble}, Cint) arg1 arg2 arg3 arg4 arg5 arg6 arg7 arg8 arg9
-end
-
-function SDPConeSetADenseVecMat(arg1::SDPCone, arg2::Integer, arg3::Integer, arg4::Integer, arg5::Cdouble, arg6, arg7::Integer)
-    @dsdp_ccall SDPConeSetADenseVecMat (SDPCone, Cint, Cint, Cint, Cdouble, Ptr{Cdouble}, Cint) arg1 arg2 arg3 arg4 arg5 arg6 arg7
-end
-
-function SDPConeSetARankOneMat(arg1::SDPCone, arg2::Integer, arg3::Integer, arg4::Integer, arg5::Cdouble, arg6::Integer, arg7, arg8, arg9::Integer)
-    @dsdp_ccall SDPConeSetARankOneMat (SDPCone, Cint, Cint, Cint, Cdouble, Cint, Ptr{Cint}, Ptr{Cdouble}, Cint) arg1 arg2 arg3 arg4 arg5 arg6 arg7 arg8 arg9
-end
-
-function SDPConeSetConstantMat(arg1::SDPCone, arg2::Integer, arg3::Integer, arg4::Integer, arg5::Cdouble)
-    @dsdp_ccall SDPConeSetConstantMat (SDPCone, Cint, Cint, Cint, Cdouble) arg1 arg2 arg3 arg4 arg5
-end
-
-function SDPConeSetZeroMat(arg1::SDPCone, arg2::Integer, arg3::Integer, arg4::Integer)
-    @dsdp_ccall SDPConeSetZeroMat (SDPCone, Cint, Cint, Cint) arg1 arg2 arg3 arg4
-end
-
-function SDPConeSetIdentity(arg1::SDPCone, arg2::Integer, arg3::Integer, arg4::Integer, arg5::Cdouble)
-    @dsdp_ccall SDPConeSetIdentity (SDPCone, Cint, Cint, Cint, Cdouble) arg1 arg2 arg3 arg4 arg5
-end
-
-function SDPConeViewDataMatrix(arg1::SDPCone, arg2::Integer, arg3::Integer)
-    @dsdp_ccall SDPConeViewDataMatrix (SDPCone, Cint, Cint) arg1 arg2 arg3
-end
-
-function SDPConeMatrixView(arg1::SDPCone, arg2::Integer)
-    @dsdp_ccall SDPConeMatrixView (SDPCone, Cint) arg1 arg2
-end
-
-function SDPConeAddASparseVecMat(arg1::SDPCone, arg2::Integer, arg3::Integer, arg4::Integer, arg5::Cdouble, arg6::Integer, arg7, arg8, arg9::Integer)
-    @dsdp_ccall SDPConeAddASparseVecMat (SDPCone, Cint, Cint, Cint, Cdouble, Cint, Ptr{Cint}, Ptr{Cdouble}, Cint) arg1 arg2 arg3 arg4 arg5 arg6 arg7 arg8 arg9
-end
-
-function SDPConeAddADenseVecMat(arg1::SDPCone, arg2::Integer, arg3::Integer, arg4::Integer, arg5::Cdouble, arg6, arg7::Integer)
-    @dsdp_ccall SDPConeAddADenseVecMat (SDPCone, Cint, Cint, Cint, Cdouble, Ptr{Cdouble}, Cint) arg1 arg2 arg3 arg4 arg5 arg6 arg7
-end
-
-function SDPConeAddConstantMat(arg1::SDPCone, arg2::Integer, arg3::Integer, arg4::Integer, arg5::Cdouble)
-    @dsdp_ccall SDPConeAddConstantMat (SDPCone, Cint, Cint, Cint, Cdouble) arg1 arg2 arg3 arg4 arg5
-end
-
-function SDPConeAddIdentity(arg1::SDPCone, arg2::Integer, arg3::Integer, arg4::Integer, arg5::Cdouble)
-    @dsdp_ccall SDPConeAddIdentity (SDPCone, Cint, Cint, Cint, Cdouble) arg1 arg2 arg3 arg4 arg5
-end
-
-function SDPConeAddARankOneMat(arg1::SDPCone, arg2::Integer, arg3::Integer, arg4::Integer, arg5::Cdouble, arg6::Integer, arg7, arg8, arg9::Integer)
-    @dsdp_ccall SDPConeAddARankOneMat (SDPCone, Cint, Cint, Cint, Cdouble, Cint, Ptr{Cint}, Ptr{Cdouble}, Cint) arg1 arg2 arg3 arg4 arg5 arg6 arg7 arg8 arg9
-end
-
-function SDPConeAddSparseVecMat(arg1::SDPCone, arg2::Integer, arg3::Integer, arg4::Integer, arg5::Integer, arg6, arg7, arg8::Integer)
-    @dsdp_ccall SDPConeAddSparseVecMat (SDPCone, Cint, Cint, Cint, Cint, Ptr{Cint}, Ptr{Cdouble}, Cint) arg1 arg2 arg3 arg4 arg5 arg6 arg7 arg8
-end
-
-function SDPConeAddDenseVecMat(arg1::SDPCone, arg2::Integer, arg3::Integer, arg4::Integer, arg5, arg6::Integer)
-    @dsdp_ccall SDPConeAddDenseVecMat (SDPCone, Cint, Cint, Cint, Ptr{Cdouble}, Cint) arg1 arg2 arg3 arg4 arg5 arg6
-end
-
-function SDPConeSetSparseVecMat(arg1::SDPCone, arg2::Integer, arg3::Integer, arg4::Integer, arg5::Integer, arg6, arg7, arg8::Integer)
-    @dsdp_ccall SDPConeSetSparseVecMat (SDPCone, Cint, Cint, Cint, Cint, Ptr{Cint}, Ptr{Cdouble}, Cint) arg1 arg2 arg3 arg4 arg5 arg6 arg7 arg8
-end
-
-function SDPConeSetDenseVecMat(arg1::SDPCone, arg2::Integer, arg3::Integer, arg4::Integer, arg5, arg6::Integer)
-    @dsdp_ccall SDPConeSetDenseVecMat (SDPCone, Cint, Cint, Cint, Ptr{Cdouble}, Cint) arg1 arg2 arg3 arg4 arg5 arg6
-end
-
-function SDPConeSetXMat(arg1::SDPCone, arg2::Integer, arg3::Integer)
-    @dsdp_ccall SDPConeSetXMat (SDPCone, Cint, Cint) arg1 arg2 arg3
-end
-
-function SDPConeSetXArray(arg1::SDPCone, arg2::Integer, arg3::Integer, arg4, arg5::Integer)
-    @dsdp_ccall SDPConeSetXArray (SDPCone, Cint, Cint, Ptr{Cdouble}, Cint) arg1 arg2 arg3 arg4 arg5
-end
-
-function SDPConeGetXArray(arg1::SDPCone, arg2::Integer, arg3, arg4)
-    @dsdp_ccall SDPConeGetXArray (SDPCone, Cint, Ptr{Ptr{Cdouble}}, Ptr{Cint}) arg1 arg2 arg3 arg4
-end
-
-function SDPConeRestoreXArray(arg1::SDPCone, arg2::Integer, arg3, arg4)
-    @dsdp_ccall SDPConeRestoreXArray (SDPCone, Cint, Ptr{Ptr{Cdouble}}, Ptr{Cint}) arg1 arg2 arg3 arg4
-end
-
-function SDPConeCheckData(arg1::SDPCone)
-    @dsdp_ccall SDPConeCheckData (SDPCone,) arg1
-end
-
-function SDPConeRemoveDataMatrix(arg1::SDPCone, arg2::Integer, arg3::Integer)
-    @dsdp_ccall SDPConeRemoveDataMatrix (SDPCone, Cint, Cint) arg1 arg2 arg3
-end
-
-function SDPConeGetNumberOfBlocks(arg1::SDPCone, arg2)
-    @dsdp_ccall SDPConeGetNumberOfBlocks (SDPCone, Ptr{Cint}) arg1 arg2
-end
-
-function SDPConeComputeS(arg1::SDPCone, arg2::Integer, arg3::Cdouble, arg4, arg5::Integer, arg6::Cdouble, arg7::Integer, arg8, arg9::Integer)
-    @dsdp_ccall SDPConeComputeS (SDPCone, Cint, Cdouble, Ptr{Cdouble}, Cint, Cdouble, Cint, Ptr{Cdouble}, Cint) arg1 arg2 arg3 arg4 arg5 arg6 arg7 arg8 arg9
-end
-
-function SDPConeComputeX(arg1::SDPCone, arg2::Integer, arg3::Integer, arg4, arg5::Integer)
-    @dsdp_ccall SDPConeComputeX (SDPCone, Cint, Cint, Ptr{Cdouble}, Cint) arg1 arg2 arg3 arg4 arg5
-end
-
-function SDPConeAddADotX(arg1::SDPCone, arg2::Integer, arg3::Cdouble, arg4, arg5::Integer, arg6, arg7::Integer)
-    @dsdp_ccall SDPConeAddADotX (SDPCone, Cint, Cdouble, Ptr{Cdouble}, Cint, Ptr{Cdouble}, Cint) arg1 arg2 arg3 arg4 arg5 arg6 arg7
-end
-
-function SDPConeViewX(arg1::SDPCone, arg2::Integer, arg3::Integer, arg4, arg5::Integer)
-    @dsdp_ccall SDPConeViewX (SDPCone, Cint, Cint, Ptr{Cdouble}, Cint) arg1 arg2 arg3 arg4 arg5
-end
-
-function SDPConeSetLanczosIterations(arg1::SDPCone, arg2::Integer)
-    @dsdp_ccall SDPConeSetLanczosIterations (SDPCone, Cint) arg1 arg2
-end
-
-function SDPConeScaleBarrier(arg1::SDPCone, arg2::Integer, arg3::Cdouble)
-    @dsdp_ccall SDPConeScaleBarrier (SDPCone, Cint, Cdouble) arg1 arg2 arg3
-end
-
-function SDPConeXVMultiply(sdpcone::SDPCone, arg2::Integer, arg3::Vector, arg4::Vector)
-    n = length(arg3)
-    @assert n == length(arg4)
-    @dsdp_ccall SDPConeXVMultiply (SDPCone, Cint, Ptr{Cdouble}, Ptr{Cdouble}, Cint) sdpcone arg2 pointer(arg3) pointer(arg4) n
-end
-
-function SDPConeComputeXV(sdpcone::SDPCone, arg2::Integer)
-    derror = Ref{Cint}()
-    @dsdp_ccall SDPConeComputeXV (SDPCone, Cint, Ref{Cint}) sdpcone arg2 derror
-    derror[]
-end
-
-function SDPConeAddXVAV(arg1::SDPCone, arg2::Integer, arg3::Vector, arg5::Vector)
-    @dsdp_ccall SDPConeAddXVAV (SDPCone, Cint, Ptr{Cdouble}, Cint, Ptr{Cdouble}, Cint) arg1 arg2 pointer(arg3) length(arg3) pointer(arg5) length(arg5)
-end
-
-function SDPConeUseLAPACKForDualMatrix(arg1::SDPCone, arg2::Integer)
-    @dsdp_ccall SDPConeUseLAPACKForDualMatrix (SDPCone, Cint) arg1 arg2
-end
-
 function SetDualObjective(dsdp::DSDPT, arg2::Integer, arg3::Cdouble)
     @dsdp_ccall DSDPSetDualObjective (DSDPT, Cint, Cdouble) dsdp arg2 arg3
 end
@@ -575,8 +292,8 @@ function ComputeMinimumXEigenvalue(dsdp::DSDPT, arg2)
     @dsdp_ccall DSDPComputeMinimumXEigenvalue (DSDPT, Ptr{Cdouble}) dsdp arg2
 end
 
-function GetTraceX(dsdp::DSDPT, arg1)
-    @dsdp_ccall DSDPGetTraceX (DSDPT, Ptr{Cdouble}) dsdp arg1
+function GetTraceX(dsdp::DSDPT, sdpcone)
+    @dsdp_ccall DSDPGetTraceX (DSDPT, Ptr{Cdouble}) dsdp sdpcone
 end
 
 function SetZBar(dsdp::DSDPT, arg2::Cdouble)
@@ -595,12 +312,16 @@ function GetYMaxNorm(dsdp::DSDPT, arg2)
     @dsdp_ccall DSDPGetYMaxNorm (DSDPT, Ptr{Cdouble}) dsdp arg2
 end
 
-function SDPConeUseFullSymmetricFormat(arg1::SDPCone, arg2::Integer)
-    @dsdp_ccall SDPConeUseFullSymmetricFormat (SDPCone, Cint) arg1 arg2
+function BoundDualVariables(dsdp::DSDPT, arg2::Cdouble, arg3::Cdouble)
+    @dsdp_ccall DSDPBoundDualVariables (DSDPT, Cdouble, Cdouble) dsdp arg2 arg3
 end
 
-function SDPConeUsePackedFormat(arg1::SDPCone, arg2::Integer)
-    @dsdp_ccall SDPConeUsePackedFormat (SDPCone, Cint) arg1 arg2
+function SetYBounds(dsdp::DSDPT, arg2::Cdouble, arg3::Cdouble)
+    @dsdp_ccall DSDPSetYBounds (DSDPT, Cdouble, Cdouble) dsdp arg2 arg3
+end
+
+function GetYBounds(dsdp::DSDPT, arg2, arg3)
+    @dsdp_ccall DSDPGetYBounds (DSDPT, Ptr{Cdouble}, Ptr{Cdouble}) dsdp arg2 arg3
 end
 
 function SetFixedVariable(dsdp::DSDPT, arg2::Integer, arg3::Cdouble)
@@ -622,14 +343,6 @@ end
 function PrintOptions()
     ccall((:DSDPPrintOptions, libdsdp), Cint, ())
 end
-
-function PrintData(dsdp::DSDPT, arg2::SDPCone, arg3::LPCone)
-    @dsdp_ccall DSDPPrintData (DSDPT, SDPCone, LPCone) dsdp arg2 arg3
-end
-
-#function PrintSolution(arg1, arg2::DSDPT, arg3::SDPCone, arg4::LPCone)
-#    @dsdp_ccall DSDPPrintSolution (Ptr{FILE}, DSDP, SDPCone, LPCone) arg1 arg2 arg3 arg4
-#end
 
 function SetOptions(dsdp::DSDPT, arg2, arg3::Integer)
     @dsdp_ccall DSDPSetOptions (DSDPT, Ptr{Cstring}, Cint) dsdp arg2 arg3

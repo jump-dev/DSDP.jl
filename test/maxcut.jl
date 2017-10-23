@@ -7,22 +7,22 @@ di(u) = di(u, u)
 signz(t) = t < 0 ? -1 : 1
 
 # Apply the Goemens and Williamson randomized cut algorithm to the SDP relaxation of the max-cut problem
-function MaxCutRandomized(sdpcone::DSDP.SDPCone, nnodes::Integer)
+function MaxCutRandomized(sdpcone::SDPCone.SDPConeT, nnodes::Integer)
     ymin = Cdouble(0)
 
     vv = Vector{Cdouble}(nnodes)
     tt = Vector{Cdouble}(nnodes)
     cc = Vector{Cdouble}(nnodes + 2)
-    DSDP.SDPConeComputeXV(sdpcone, 0)
+    SDPCone.ComputeXV(sdpcone, 0)
     for i in 1:nnodes
         for j in eachindex(vv)
             dd = rand() - .5
             vv[j] = tan(π * dd)
         end
-        DSDP.SDPConeXVMultiply(sdpcone, 0, vv, tt)
+        SDPCone.XVMultiply(sdpcone, 0, vv, tt)
         map!(signz, tt, tt)
         map!(zero, cc, cc)
-        DSDP.SDPConeAddXVAV(sdpcone, 0, tt, cc)
+        SDPCone.AddXVAV(sdpcone, 0, tt, cc)
         if cc[1] < ymin
             ymin = cc[1]
         end
@@ -36,7 +36,7 @@ function maxcut(nnodes, edges)
     dsdp = DSDP.Create(nnodes)
     sdpcone = DSDP.CreateSDPCone(dsdp, 1)
 
-    DSDP.SDPConeSetBlockSize(sdpcone, 0, nnodes)
+    SDPCone.SetBlockSize(sdpcone, 0, nnodes)
 
     # Formulate the problem from the data
     # Diagonal elements equal 1.0
@@ -48,7 +48,7 @@ function maxcut(nnodes, edges)
 
     for i in 1:nnodes
         DSDP.SetDualObjective(dsdp, i, 1.0)
-        DSDP.SDPConeSetASparseVecMat(sdpcone, 0, i, nnodes, 1.0, 0, pointer(iptr, i), pointer(diag, i), 1)
+        SDPCone.SetASparseVecMat(sdpcone, 0, i, nnodes, 1.0, 0, pointer(iptr, i), pointer(diag, i), 1)
     end
 
     # C matrix is the Laplacian of the adjacency matrix
@@ -68,8 +68,8 @@ function maxcut(nnodes, edges)
         yy[v] -= abs(w/2)
     end
 
-    DSDP.SDPConeSetASparseVecMat(sdpcone,0,0,nnodes,1.0,0,pointer(indd),pointer(val),nedges)
-    DSDP.SDPConeAddASparseVecMat(sdpcone,0,0,nnodes,1.0,0,pointer(indd,nedges+1),pointer(val,nedges+1),nnodes)
+    SDPCone.SetASparseVecMat(sdpcone,0,0,nnodes,1.0,0,pointer(indd),pointer(val),nedges)
+    SDPCone.AddASparseVecMat(sdpcone,0,0,nnodes,1.0,0,pointer(indd,nedges+1),pointer(val,nedges+1),nnodes)
 
     # Initial Point
     DSDP.SetR0(dsdp,0.0)

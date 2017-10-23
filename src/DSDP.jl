@@ -17,13 +17,40 @@ macro dsdp_ccall(f, args...)
     end
 end
 
-
 const DSDPT = Ptr{Void}
-const SDPCone = Ptr{Void}
-const BCone = Ptr{Void}
-const LPCone = Ptr{Void}
 
 include("dsdp5_enums.jl")
 include("dsdp5_API.jl")
+
+include("lpcone.jl")
+function CreateLPCone(dsdp::DSDPT)
+    lpcone = Ref{LPCone.LPConeT}()
+    @dsdp_ccall DSDPCreateLPCone (DSDPT, Ref{LPCone.LPConeT}) dsdp lpcone
+    lpcone[]
+end
+
+include("sdpcone.jl")
+function CreateSDPCone(dsdp::DSDPT, n::Integer)
+    sdpcone = Ref{SDPCone.SDPConeT}()
+    @dsdp_ccall DSDPCreateSDPCone (DSDPT, Cint, Ref{SDPCone.SDPConeT}) dsdp n sdpcone
+    sdpcone[]
+end
+
+include("bcone.jl")
+function CreateBCone(dsdp::DSDPT)
+    bcone = Ref{BCone.BConeT}()
+    @dsdp_ccall DSDPCreateBCone (DSDPT, Ref{BCone.BConeT}) dsdp bcone
+    bcone[]
+end
+
+function PrintData(dsdp::DSDPT, arg2::SDPCone.SDPConeT, arg3::LPCone.LPConeT)
+    @dsdp_ccall DSDPPrintData (DSDPT, SDPCone.SDPConeT, LPCone.LPConeT) dsdp arg2 arg3
+end
+
+#function PrintSolution(arg1, arg2::DSDPT, arg3::SDPCone.SDPConeT, arg4::LPCone.LPConeT)
+#    @dsdp_ccall DSDPPrintSolution (Ptr{FILE}, DSDP, SDPCone.SDPConeT, LPCone.LPConeT) arg1 arg2 arg3 arg4
+#end
+
+#include("DSDPSolverInterface.jl")
 
 end
