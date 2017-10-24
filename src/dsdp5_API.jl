@@ -24,8 +24,10 @@ function ComputeX(dsdp::DSDPT)
     @dsdp_ccall DSDPComputeX (DSDPT,) dsdp
 end
 
-function ComputeAndFactorS(dsdp::DSDPT, arg2)
-    @dsdp_ccall DSDPComputeAndFactorS (DSDPT, Ptr{DSDPTruth}) dsdp arg2
+function ComputeAndFactorS(dsdp::DSDPT)
+    psdefinite = Ref{DSDPTruth}()
+    @dsdp_ccall DSDPComputeAndFactorS (DSDPT, Ref{DSDPTruth}) dsdp psdefinite
+    psdefinite[]
 end
 
 function Destroy(dsdp::DSDPT)
@@ -110,8 +112,8 @@ function SetY0(dsdp::DSDPT, arg2::Integer, arg3::Cdouble)
     @dsdp_ccall DSDPSetY0 (DSDPT, Cint, Cdouble) dsdp arg2 arg3
 end
 
-function GetY(dsdp::DSDPT, arg2, arg3::Integer)
-    @dsdp_ccall DSDPGetY (DSDPT, Ptr{Cdouble}, Cint) dsdp arg2 arg3
+function GetY(dsdp::DSDPT, y::Vector{Cdouble})
+    @dsdp_ccall DSDPGetY (DSDPT, Ptr{Cdouble}, Cint) dsdp pointer(y) length(y)
 end
 
 function GetYMakeX(dsdp::DSDPT, arg2, arg3::Integer)
@@ -212,8 +214,10 @@ function StopReason(dsdp::DSDPT)
     stop[]
 end
 
-function GetSolutionType(dsdp::DSDPT, arg2)
-    @dsdp_ccall DSDPGetSolutionType (DSDPT, Ptr{DSDPSolutionType}) dsdp arg2
+function GetSolutionType(dsdp::DSDPT)
+    sol = Ref{DSDPSolutionType}()
+    @dsdp_ccall DSDPGetSolutionType (DSDPT, Ref{DSDPSolutionType}) dsdp sol
+    sol[]
 end
 
 function SetPotentialParameter(dsdp::DSDPT, arg2::Real)

@@ -30,7 +30,7 @@ end
 
 # This function is not part of DSDP API
 function SetDataSparse(lpcone::LPConeT, n::Integer, nvars, lpdvars, lpdrows, lpcoefs)
-    SetData(lpcone, n, buildlp(nvar, lpdvars, lpdrows, lpcoefs)...)
+    SetData(lpcone, n, buildlp(nvars, lpdvars, lpdrows, lpcoefs)...)
 end
 
 function SetData(lpcone::LPConeT, n::Integer, nnzin::Vector{Cint}, row::Vector{Cint}, aval::Vector{Cdouble})
@@ -50,12 +50,18 @@ function ScaleBarrier(arg1::LPConeT, arg2::Cdouble)
     @dsdp_ccall LPConeScaleBarrier (LPConeT, Cdouble) arg1 arg2
 end
 
-function GetXArray(arg1::LPConeT, arg2, arg3)
-    @dsdp_ccall LPConeGetXArray (LPConeT, Ptr{Ptr{Cdouble}}, Ptr{Cint}) arg1 arg2 arg3
+function GetXArray(lpcone::LPConeT)
+    xout = Ref{Ptr{Cdouble}}()
+    n = Ref{Cint}()
+    @dsdp_ccall LPConeGetXArray (LPConeT, Ptr{Ptr{Cdouble}}, Ptr{Cint}) lpcone xout n
+    unsafe_wrap(Array, xout[], n[])
 end
 
-function GetSArray(arg1::LPConeT, arg2, arg3)
-    @dsdp_ccall LPConeGetSArray (LPConeT, Ptr{Ptr{Cdouble}}, Ptr{Cint}) arg1 arg2 arg3
+function GetSArray(lpcone::LPConeT)
+    sout = Ref{Ptr{Cdouble}}()
+    n = Ref{Cint}()
+    @dsdp_ccall LPConeGetSArray (LPConeT, Ref{Ptr{Cdouble}}, Ref{Cint}) lpcone sout n
+    unsafe_wrap(Array, sout[], n[])
 end
 
 function GetDimension(arg1::LPConeT, arg2)

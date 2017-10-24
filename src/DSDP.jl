@@ -12,7 +12,7 @@ macro dsdp_ccall(f, args...)
         # and leave it as a symbol
         info = ccall(($(QuoteNode(f)), libdsdp), Cint, $(esc.(args)...))
         if !iszero(info)
-            error("DSDP call $f returned nonzero status $info.")
+            error("DSDP call $($(QuoteNode(f))) returned nonzero status $info.")
         end
     end
 end
@@ -51,6 +51,6 @@ end
 #    @dsdp_ccall DSDPPrintSolution (Ptr{FILE}, DSDP, SDPCone.SDPConeT, LPCone.LPConeT) arg1 arg2 arg3 arg4
 #end
 
-#include("DSDPSolverInterface.jl")
+include("DSDPSolverInterface.jl")
 
 end
