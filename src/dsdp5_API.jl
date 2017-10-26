@@ -2,630 +2,360 @@
 # Automatically generated using Clang.jl wrap_c, version 0.0.0
 
 
-function SetConvergenceFlag(arg1::Ptr{Void}, arg2::DSDPTerminationReason)
-    ccall((:DSDPSetConvergenceFlag, libdsdp), Cint, (Ptr{Void}, DSDPTerminationReason), arg1, arg2)
+function SetConvergenceFlag(dsdp::DSDPT, arg2::DSDPTerminationReason)
+    @dsdp_ccall DSDPSetConvergenceFlag (DSDPT, DSDPTerminationReason) dsdp arg2
 end
 
 function Create(m::Integer)
-    dsdp = Ref{Ptr{Void}}()
-    info = ccall((:DSDPCreate, libdsdp), Cint, (Cint, Ref{Ptr{Void}}), m, dsdp)
-    @assert iszero(info)
+    dsdp = Ref{DSDPT}()
+    @dsdp_ccall DSDPCreate (Cint, Ref{DSDPT}) m dsdp
     dsdp[]
 end
 
-function Setup(dsdp::Ptr{Void})
-    ccall((:DSDPSetup, libdsdp), Cint, (Ptr{Void},), dsdp)
+function Setup(dsdp::DSDPT)
+    @dsdp_ccall DSDPSetup (DSDPT,) dsdp
 end
 
-function Solve(dsdp::Ptr{Void})
-    ccall((:DSDPSolve, libdsdp), Cint, (Ptr{Void},), dsdp)
+function Solve(dsdp::DSDPT)
+    @dsdp_ccall DSDPSolve (DSDPT,) dsdp
 end
 
-function ComputeX(arg1::Ptr{Void})
-    ccall((:DSDPComputeX, libdsdp), Cint, (Ptr{Void},), arg1)
+function ComputeX(dsdp::DSDPT)
+    @dsdp_ccall DSDPComputeX (DSDPT,) dsdp
 end
 
-function ComputeAndFactorS(arg1::Ptr{Void}, arg2)
-    ccall((:DSDPComputeAndFactorS, libdsdp), Cint, (Ptr{Void}, Ptr{DSDPTruth}), arg1, arg2)
+function ComputeAndFactorS(dsdp::DSDPT)
+    psdefinite = Ref{DSDPTruth}()
+    @dsdp_ccall DSDPComputeAndFactorS (DSDPT, Ref{DSDPTruth}) dsdp psdefinite
+    psdefinite[]
 end
 
-function Destroy(arg1::Ptr{Void})
-    ccall((:DSDPDestroy, libdsdp), Cint, (Ptr{Void},), arg1)
+function Destroy(dsdp::DSDPT)
+    @dsdp_ccall DSDPDestroy (DSDPT,) dsdp
 end
 
-function CreateBCone(arg1::Ptr{Void}, arg2)
-    ccall((:DSDPCreateBCone, libdsdp), Cint, (Ptr{Void}, Ptr{BCone}), arg1, arg2)
+function SetDualObjective(dsdp::DSDPT, arg2::Integer, arg3::Cdouble)
+    @dsdp_ccall DSDPSetDualObjective (DSDPT, Cint, Cdouble) dsdp arg2 arg3
 end
 
-function BConeAllocateBounds(arg1::BCone, arg2::Integer)
-    ccall((:BConeAllocateBounds, libdsdp), Cint, (BCone, Cint), arg1, arg2)
+function AddObjectiveConstant(dsdp::DSDPT, arg2::Cdouble)
+    @dsdp_ccall DSDPAddObjectiveConstant (DSDPT, Cdouble) dsdp arg2
 end
 
-function BConeSetLowerBound(arg1::BCone, arg2::Integer, arg3::Cdouble)
-    ccall((:BConeSetLowerBound, libdsdp), Cint, (BCone, Cint, Cdouble), arg1, arg2, arg3)
+function GetDObjective(dsdp::DSDPT)
+    dobj = Ref{Cdouble}()
+    @dsdp_ccall DSDPGetDObjective (DSDPT, Ref{Cdouble}) dsdp dobj
+    dobj[]
 end
 
-function BConeSetUpperBound(arg1::BCone, arg2::Integer, arg3::Cdouble)
-    ccall((:BConeSetUpperBound, libdsdp), Cint, (BCone, Cint, Cdouble), arg1, arg2, arg3)
+function GetDDObjective(dsdp::DSDPT)
+    ddobj = Ref{Cdouble}()
+    @dsdp_ccall DSDPGetDDObjective (DSDPT, Ref{Cdouble}) dsdp ddobj
+    ddobj[]
 end
 
-function BConeSetPSlackVariable(arg1::BCone, arg2::Integer)
-    ccall((:BConeSetPSlackVariable, libdsdp), Cint, (BCone, Cint), arg1, arg2)
+function GetPObjective(dsdp::DSDPT)
+    pobj = Ref{Cdouble}()
+    @dsdp_ccall DSDPGetPObjective (DSDPT, Ptr{Cdouble}) dsdp pobj
+    pobj[]
 end
 
-function BConeSetPSurplusVariable(arg1::BCone, arg2::Integer)
-    ccall((:BConeSetPSurplusVariable, libdsdp), Cint, (BCone, Cint), arg1, arg2)
+function GetPPObjective(dsdp::DSDPT)
+    ppobj = Ref{Cdouble}()
+    @dsdp_ccall DSDPGetPPObjective (DSDPT, Ptr{Cdouble}) dsdp ppobj
+    ppobj[]
 end
 
-function BConeScaleBarrier(arg1::BCone, arg2::Cdouble)
-    ccall((:BConeScaleBarrier, libdsdp), Cint, (BCone, Cdouble), arg1, arg2)
+function GetDualityGap(dsdp::DSDPT)
+    dgap = Ref{Cdouble}()
+    @dsdp_ccall DSDPGetDualityGap (DSDPT, Ptr{Cdouble}) dsdp dgap
+    dgap[]
 end
 
-function BConeView(arg1::BCone)
-    ccall((:BConeView, libdsdp), Cint, (BCone,), arg1)
+function GetScale(dsdp::DSDPT, arg2)
+    @dsdp_ccall DSDPGetScale (DSDPT, Ptr{Cdouble}) dsdp arg2
 end
 
-function BConeSetXArray(arg1::BCone, arg2, arg3::Integer)
-    ccall((:BConeSetXArray, libdsdp), Cint, (BCone, Ptr{Cdouble}, Cint), arg1, arg2, arg3)
+function SetScale(dsdp::DSDPT, arg2::Cdouble)
+    @dsdp_ccall DSDPSetScale (DSDPT, Cdouble) dsdp arg2
 end
 
-function BConeCopyX(arg1::BCone, arg2, arg3, arg4::Integer)
-    ccall((:BConeCopyX, libdsdp), Cint, (BCone, Ptr{Cdouble}, Ptr{Cdouble}, Cint), arg1, arg2, arg3, arg4)
+function GetPenaltyParameter(dsdp::DSDPT, arg2)
+    @dsdp_ccall DSDPGetPenaltyParameter (DSDPT, Ptr{Cdouble}) dsdp arg2
 end
 
-function BoundDualVariables(arg1::Ptr{Void}, arg2::Cdouble, arg3::Cdouble)
-    ccall((:DSDPBoundDualVariables, libdsdp), Cint, (Ptr{Void}, Cdouble, Cdouble), arg1, arg2, arg3)
+function GetPenalty(dsdp::DSDPT, arg2)
+    @dsdp_ccall DSDPGetPenalty (DSDPT, Ptr{Cdouble}) dsdp arg2
 end
 
-function SetYBounds(arg1::Ptr{Void}, arg2::Cdouble, arg3::Cdouble)
-    ccall((:DSDPSetYBounds, libdsdp), Cint, (Ptr{Void}, Cdouble, Cdouble), arg1, arg2, arg3)
+function CopyB(dsdp::DSDPT, arg2, arg3::Integer)
+    @dsdp_ccall DSDPCopyB (DSDPT, Ptr{Cdouble}, Cint) dsdp arg2 arg3
 end
 
-function GetYBounds(arg1::Ptr{Void}, arg2, arg3)
-    ccall((:DSDPGetYBounds, libdsdp), Cint, (Ptr{Void}, Ptr{Cdouble}, Ptr{Cdouble}), arg1, arg2, arg3)
+function SetR0(dsdp::DSDPT, arg2::Cdouble)
+    @dsdp_ccall DSDPSetR0 (DSDPT, Cdouble) dsdp arg2
 end
 
-function CreateLPCone(arg1::Ptr{Void}, arg2)
-    ccall((:DSDPCreateLPCone, libdsdp), Cint, (Ptr{Void}, Ptr{LPCone}), arg1, arg2)
+function GetR(dsdp::DSDPT, arg2)
+    @dsdp_ccall DSDPGetR (DSDPT, Ptr{Cdouble}) dsdp arg2
 end
 
-function LPConeSetData(arg1::LPCone, arg2::Integer, arg3, arg4, arg5)
-    ccall((:LPConeSetData, libdsdp), Cint, (LPCone, Cint, Ptr{Cint}, Ptr{Cint}, Ptr{Cdouble}), arg1, arg2, arg3, arg4, arg5)
+function SetRTolerance(dsdp::DSDPT, arg2::Cdouble)
+    @dsdp_ccall DSDPSetRTolerance (DSDPT, Cdouble) dsdp arg2
 end
 
-function LPConeSetData2(arg1::LPCone, arg2::Integer, arg3, arg4, arg5)
-    ccall((:LPConeSetData2, libdsdp), Cint, (LPCone, Cint, Ptr{Cint}, Ptr{Cint}, Ptr{Cdouble}), arg1, arg2, arg3, arg4, arg5)
+function GetRTolerance(dsdp::DSDPT, arg2)
+    @dsdp_ccall DSDPGetRTolerance (DSDPT, Ptr{Cdouble}) dsdp arg2
 end
 
-function LPConeGetData(arg1::LPCone, arg2::Integer, arg3, arg4::Integer)
-    ccall((:LPConeGetData, libdsdp), Cint, (LPCone, Cint, Ptr{Cdouble}, Cint), arg1, arg2, arg3, arg4)
+function SetY0(dsdp::DSDPT, arg2::Integer, arg3::Cdouble)
+    @dsdp_ccall DSDPSetY0 (DSDPT, Cint, Cdouble) dsdp arg2 arg3
 end
 
-function LPConeScaleBarrier(arg1::LPCone, arg2::Cdouble)
-    ccall((:LPConeScaleBarrier, libdsdp), Cint, (LPCone, Cdouble), arg1, arg2)
+function GetY(dsdp::DSDPT, y::Vector{Cdouble})
+    @dsdp_ccall DSDPGetY (DSDPT, Ptr{Cdouble}, Cint) dsdp pointer(y) length(y)
 end
 
-function LPConeGetXArray(arg1::LPCone, arg2, arg3)
-    ccall((:LPConeGetXArray, libdsdp), Cint, (LPCone, Ptr{Ptr{Cdouble}}, Ptr{Cint}), arg1, arg2, arg3)
+function GetYMakeX(dsdp::DSDPT, arg2, arg3::Integer)
+    @dsdp_ccall DSDPGetYMakeX (DSDPT, Ptr{Cdouble}, Cint) dsdp arg2 arg3
 end
 
-function LPConeGetSArray(arg1::LPCone, arg2, arg3)
-    ccall((:LPConeGetSArray, libdsdp), Cint, (LPCone, Ptr{Ptr{Cdouble}}, Ptr{Cint}), arg1, arg2, arg3)
+function GetDYMakeX(dsdp::DSDPT, arg2, arg3::Integer)
+    @dsdp_ccall DSDPGetDYMakeX (DSDPT, Ptr{Cdouble}, Cint) dsdp arg2 arg3
 end
 
-function LPConeGetDimension(arg1::LPCone, arg2)
-    ccall((:LPConeGetDimension, libdsdp), Cint, (LPCone, Ptr{Cint}), arg1, arg2)
+function GetMuMakeX(dsdp::DSDPT, arg2)
+    @dsdp_ccall DSDPGetMuMakeX (DSDPT, Ptr{Cdouble}) dsdp arg2
 end
 
-function LPConeView(lpcone::LPCone)
-    ccall((:LPConeView, libdsdp), Cint, (LPCone,), lpcone)
+function GetBarrierParameter(dsdp::DSDPT, arg2)
+    @dsdp_ccall DSDPGetBarrierParameter (DSDPT, Ptr{Cdouble}) dsdp arg2
 end
 
-function LPConeView2(lpcone::LPCone)
-    ccall((:LPConeView2, libdsdp), Cint, (LPCone,), lpcone)
+function SetBarrierParameter(dsdp::DSDPT, arg2::Cdouble)
+    @dsdp_ccall DSDPSetBarrierParameter (DSDPT, Cdouble) dsdp arg2
 end
 
-function LPConeCopyS(arg1::LPCone, arg2, arg3::Integer)
-    ccall((:LPConeCopyS, libdsdp), Cint, (LPCone, Ptr{Cdouble}, Cint), arg1, arg2, arg3)
+function ReuseMatrix(dsdp::DSDPT, arg2::Integer)
+    @dsdp_ccall DSDPReuseMatrix (DSDPT, Cint) dsdp arg2
 end
 
-function CreateSDPCone(dsdp::Ptr{Void}, n::Integer)
-    sdpcone = Ref{SDPCone}()
-    info = ccall((:DSDPCreateSDPCone, libdsdp), Cint, (Ptr{Void}, Cint, Ref{SDPCone}), dsdp, n, sdpcone)
-    @assert iszero(info)
-    sdpcone[]
+function GetReuseMatrix(dsdp::DSDPT, arg2)
+    @dsdp_ccall DSDPGetReuseMatrix (DSDPT, Ptr{Cint}) dsdp arg2
 end
-function CreateSDPCone(arg1::Ptr{Void}, arg2::Integer, arg3)
-    ccall((:DSDPCreateSDPCone, libdsdp), Cint, (Ptr{Void}, Cint, Ptr{SDPCone}), arg1, arg2, arg3)
-end
-
-function SDPConeSetBlockSize(sdpcone::SDPCone, i::Integer, j::Integer)
-    info = ccall((:SDPConeSetBlockSize, libdsdp), Cint, (SDPCone, Cint, Cint), sdpcone, i, j)
-    @assert iszero(info)
-end
-
-function SDPConeGetBlockSize(arg1::SDPCone, arg2::Integer, arg3)
-    ccall((:SDPConeGetBlockSize, libdsdp), Cint, (SDPCone, Cint, Ptr{Cint}), arg1, arg2, arg3)
-end
-
-function SDPConeSetStorageFormat(arg1::SDPCone, arg2::Integer, arg3::UInt8)
-    ccall((:SDPConeSetStorageFormat, libdsdp), Cint, (SDPCone, Cint, UInt8), arg1, arg2, arg3)
-end
-
-function SDPConeGetStorageFormat(arg1::SDPCone, arg2::Integer, arg3)
-    ccall((:SDPConeGetStorageFormat, libdsdp), Cint, (SDPCone, Cint, Cstring), arg1, arg2, arg3)
-end
-
-function SDPConeCheckStorageFormat(arg1::SDPCone, arg2::Integer, arg3::UInt8)
-    ccall((:SDPConeCheckStorageFormat, libdsdp), Cint, (SDPCone, Cint, UInt8), arg1, arg2, arg3)
-end
-
-function SDPConeSetSparsity(arg1::SDPCone, arg2::Integer, arg3::Integer)
-    ccall((:SDPConeSetSparsity, libdsdp), Cint, (SDPCone, Cint, Cint), arg1, arg2, arg3)
-end
-
-function SDPConeView(arg1::SDPCone)
-    ccall((:SDPConeView, libdsdp), Cint, (SDPCone,), arg1)
-end
-
-function SDPConeView2(arg1::SDPCone)
-    ccall((:SDPConeView2, libdsdp), Cint, (SDPCone,), arg1)
-end
-
-function SDPConeView3(arg1::SDPCone)
-    ccall((:SDPConeView3, libdsdp), Cint, (SDPCone,), arg1)
-end
-
-function SDPConeSetASparseVecMat(arg1::SDPCone, arg2::Integer, arg3::Integer, arg4::Integer, arg5::Cdouble, arg6::Integer, arg7, arg8, arg9::Integer)
-    ccall((:SDPConeSetASparseVecMat, libdsdp), Cint, (SDPCone, Cint, Cint, Cint, Cdouble, Cint, Ptr{Cint}, Ptr{Cdouble}, Cint), arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9)
-end
-
-function SDPConeSetADenseVecMat(arg1::SDPCone, arg2::Integer, arg3::Integer, arg4::Integer, arg5::Cdouble, arg6, arg7::Integer)
-    ccall((:SDPConeSetADenseVecMat, libdsdp), Cint, (SDPCone, Cint, Cint, Cint, Cdouble, Ptr{Cdouble}, Cint), arg1, arg2, arg3, arg4, arg5, arg6, arg7)
-end
-
-function SDPConeSetARankOneMat(arg1::SDPCone, arg2::Integer, arg3::Integer, arg4::Integer, arg5::Cdouble, arg6::Integer, arg7, arg8, arg9::Integer)
-    ccall((:SDPConeSetARankOneMat, libdsdp), Cint, (SDPCone, Cint, Cint, Cint, Cdouble, Cint, Ptr{Cint}, Ptr{Cdouble}, Cint), arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9)
-end
-
-function SDPConeSetConstantMat(arg1::SDPCone, arg2::Integer, arg3::Integer, arg4::Integer, arg5::Cdouble)
-    ccall((:SDPConeSetConstantMat, libdsdp), Cint, (SDPCone, Cint, Cint, Cint, Cdouble), arg1, arg2, arg3, arg4, arg5)
-end
-
-function SDPConeSetZeroMat(arg1::SDPCone, arg2::Integer, arg3::Integer, arg4::Integer)
-    ccall((:SDPConeSetZeroMat, libdsdp), Cint, (SDPCone, Cint, Cint, Cint), arg1, arg2, arg3, arg4)
-end
-
-function SDPConeSetIdentity(arg1::SDPCone, arg2::Integer, arg3::Integer, arg4::Integer, arg5::Cdouble)
-    ccall((:SDPConeSetIdentity, libdsdp), Cint, (SDPCone, Cint, Cint, Cint, Cdouble), arg1, arg2, arg3, arg4, arg5)
-end
-
-function SDPConeViewDataMatrix(arg1::SDPCone, arg2::Integer, arg3::Integer)
-    ccall((:SDPConeViewDataMatrix, libdsdp), Cint, (SDPCone, Cint, Cint), arg1, arg2, arg3)
-end
-
-function SDPConeMatrixView(arg1::SDPCone, arg2::Integer)
-    ccall((:SDPConeMatrixView, libdsdp), Cint, (SDPCone, Cint), arg1, arg2)
-end
-
-function SDPConeAddASparseVecMat(arg1::SDPCone, arg2::Integer, arg3::Integer, arg4::Integer, arg5::Cdouble, arg6::Integer, arg7, arg8, arg9::Integer)
-    ccall((:SDPConeAddASparseVecMat, libdsdp), Cint, (SDPCone, Cint, Cint, Cint, Cdouble, Cint, Ptr{Cint}, Ptr{Cdouble}, Cint), arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9)
-end
-
-function SDPConeAddADenseVecMat(arg1::SDPCone, arg2::Integer, arg3::Integer, arg4::Integer, arg5::Cdouble, arg6, arg7::Integer)
-    ccall((:SDPConeAddADenseVecMat, libdsdp), Cint, (SDPCone, Cint, Cint, Cint, Cdouble, Ptr{Cdouble}, Cint), arg1, arg2, arg3, arg4, arg5, arg6, arg7)
-end
-
-function SDPConeAddConstantMat(arg1::SDPCone, arg2::Integer, arg3::Integer, arg4::Integer, arg5::Cdouble)
-    ccall((:SDPConeAddConstantMat, libdsdp), Cint, (SDPCone, Cint, Cint, Cint, Cdouble), arg1, arg2, arg3, arg4, arg5)
-end
-
-function SDPConeAddIdentity(arg1::SDPCone, arg2::Integer, arg3::Integer, arg4::Integer, arg5::Cdouble)
-    ccall((:SDPConeAddIdentity, libdsdp), Cint, (SDPCone, Cint, Cint, Cint, Cdouble), arg1, arg2, arg3, arg4, arg5)
-end
-
-function SDPConeAddARankOneMat(arg1::SDPCone, arg2::Integer, arg3::Integer, arg4::Integer, arg5::Cdouble, arg6::Integer, arg7, arg8, arg9::Integer)
-    ccall((:SDPConeAddARankOneMat, libdsdp), Cint, (SDPCone, Cint, Cint, Cint, Cdouble, Cint, Ptr{Cint}, Ptr{Cdouble}, Cint), arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9)
-end
-
-function SDPConeAddSparseVecMat(arg1::SDPCone, arg2::Integer, arg3::Integer, arg4::Integer, arg5::Integer, arg6, arg7, arg8::Integer)
-    ccall((:SDPConeAddSparseVecMat, libdsdp), Cint, (SDPCone, Cint, Cint, Cint, Cint, Ptr{Cint}, Ptr{Cdouble}, Cint), arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8)
-end
-
-function SDPConeAddDenseVecMat(arg1::SDPCone, arg2::Integer, arg3::Integer, arg4::Integer, arg5, arg6::Integer)
-    ccall((:SDPConeAddDenseVecMat, libdsdp), Cint, (SDPCone, Cint, Cint, Cint, Ptr{Cdouble}, Cint), arg1, arg2, arg3, arg4, arg5, arg6)
-end
-
-function SDPConeSetSparseVecMat(arg1::SDPCone, arg2::Integer, arg3::Integer, arg4::Integer, arg5::Integer, arg6, arg7, arg8::Integer)
-    ccall((:SDPConeSetSparseVecMat, libdsdp), Cint, (SDPCone, Cint, Cint, Cint, Cint, Ptr{Cint}, Ptr{Cdouble}, Cint), arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8)
-end
-
-function SDPConeSetDenseVecMat(arg1::SDPCone, arg2::Integer, arg3::Integer, arg4::Integer, arg5, arg6::Integer)
-    ccall((:SDPConeSetDenseVecMat, libdsdp), Cint, (SDPCone, Cint, Cint, Cint, Ptr{Cdouble}, Cint), arg1, arg2, arg3, arg4, arg5, arg6)
-end
-
-function SDPConeSetXMat(arg1::SDPCone, arg2::Integer, arg3::Integer)
-    ccall((:SDPConeSetXMat, libdsdp), Cint, (SDPCone, Cint, Cint), arg1, arg2, arg3)
-end
-
-function SDPConeSetXArray(arg1::SDPCone, arg2::Integer, arg3::Integer, arg4, arg5::Integer)
-    ccall((:SDPConeSetXArray, libdsdp), Cint, (SDPCone, Cint, Cint, Ptr{Cdouble}, Cint), arg1, arg2, arg3, arg4, arg5)
-end
-
-function SDPConeGetXArray(arg1::SDPCone, arg2::Integer, arg3, arg4)
-    ccall((:SDPConeGetXArray, libdsdp), Cint, (SDPCone, Cint, Ptr{Ptr{Cdouble}}, Ptr{Cint}), arg1, arg2, arg3, arg4)
-end
-
-function SDPConeRestoreXArray(arg1::SDPCone, arg2::Integer, arg3, arg4)
-    ccall((:SDPConeRestoreXArray, libdsdp), Cint, (SDPCone, Cint, Ptr{Ptr{Cdouble}}, Ptr{Cint}), arg1, arg2, arg3, arg4)
-end
-
-function SDPConeCheckData(arg1::SDPCone)
-    ccall((:SDPConeCheckData, libdsdp), Cint, (SDPCone,), arg1)
-end
-
-function SDPConeRemoveDataMatrix(arg1::SDPCone, arg2::Integer, arg3::Integer)
-    ccall((:SDPConeRemoveDataMatrix, libdsdp), Cint, (SDPCone, Cint, Cint), arg1, arg2, arg3)
-end
-
-function SDPConeGetNumberOfBlocks(arg1::SDPCone, arg2)
-    ccall((:SDPConeGetNumberOfBlocks, libdsdp), Cint, (SDPCone, Ptr{Cint}), arg1, arg2)
-end
-
-function SDPConeComputeS(arg1::SDPCone, arg2::Integer, arg3::Cdouble, arg4, arg5::Integer, arg6::Cdouble, arg7::Integer, arg8, arg9::Integer)
-    ccall((:SDPConeComputeS, libdsdp), Cint, (SDPCone, Cint, Cdouble, Ptr{Cdouble}, Cint, Cdouble, Cint, Ptr{Cdouble}, Cint), arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9)
-end
-
-function SDPConeComputeX(arg1::SDPCone, arg2::Integer, arg3::Integer, arg4, arg5::Integer)
-    ccall((:SDPConeComputeX, libdsdp), Cint, (SDPCone, Cint, Cint, Ptr{Cdouble}, Cint), arg1, arg2, arg3, arg4, arg5)
-end
-
-function SDPConeAddADotX(arg1::SDPCone, arg2::Integer, arg3::Cdouble, arg4, arg5::Integer, arg6, arg7::Integer)
-    ccall((:SDPConeAddADotX, libdsdp), Cint, (SDPCone, Cint, Cdouble, Ptr{Cdouble}, Cint, Ptr{Cdouble}, Cint), arg1, arg2, arg3, arg4, arg5, arg6, arg7)
-end
-
-function SDPConeViewX(arg1::SDPCone, arg2::Integer, arg3::Integer, arg4, arg5::Integer)
-    ccall((:SDPConeViewX, libdsdp), Cint, (SDPCone, Cint, Cint, Ptr{Cdouble}, Cint), arg1, arg2, arg3, arg4, arg5)
-end
-
-function SDPConeSetLanczosIterations(arg1::SDPCone, arg2::Integer)
-    ccall((:SDPConeSetLanczosIterations, libdsdp), Cint, (SDPCone, Cint), arg1, arg2)
-end
-
-function SDPConeScaleBarrier(arg1::SDPCone, arg2::Integer, arg3::Cdouble)
-    ccall((:SDPConeScaleBarrier, libdsdp), Cint, (SDPCone, Cint, Cdouble), arg1, arg2, arg3)
-end
-
-function SDPConeXVMultiply(arg1::SDPCone, arg2::Integer, arg3, arg4, arg5::Integer)
-    ccall((:SDPConeXVMultiply, libdsdp), Cint, (SDPCone, Cint, Ptr{Cdouble}, Ptr{Cdouble}, Cint), arg1, arg2, arg3, arg4, arg5)
-end
-
-function SDPConeComputeXV(arg1::SDPCone, arg2::Integer, arg3)
-    ccall((:SDPConeComputeXV, libdsdp), Cint, (SDPCone, Cint, Ptr{Cint}), arg1, arg2, arg3)
-end
-
-function SDPConeAddXVAV(arg1::SDPCone, arg2::Integer, arg3, arg4::Integer, arg5, arg6::Integer)
-    ccall((:SDPConeAddXVAV, libdsdp), Cint, (SDPCone, Cint, Ptr{Cdouble}, Cint, Ptr{Cdouble}, Cint), arg1, arg2, arg3, arg4, arg5, arg6)
-end
-
-function SDPConeUseLAPACKForDualMatrix(arg1::SDPCone, arg2::Integer)
-    ccall((:SDPConeUseLAPACKForDualMatrix, libdsdp), Cint, (SDPCone, Cint), arg1, arg2)
-end
-
-function SetDualObjective(arg1::Ptr{Void}, arg2::Integer, arg3::Cdouble)
-    ccall((:DSDPSetDualObjective, libdsdp), Cint, (Ptr{Void}, Cint, Cdouble), arg1, arg2, arg3)
-end
-
-function AddObjectiveConstant(arg1::Ptr{Void}, arg2::Cdouble)
-    ccall((:DSDPAddObjectiveConstant, libdsdp), Cint, (Ptr{Void}, Cdouble), arg1, arg2)
-end
-
-function GetDObjective(arg1::Ptr{Void}, arg2)
-    ccall((:DSDPGetDObjective, libdsdp), Cint, (Ptr{Void}, Ptr{Cdouble}), arg1, arg2)
-end
-
-function GetDDObjective(arg1::Ptr{Void}, arg2)
-    ccall((:DSDPGetDDObjective, libdsdp), Cint, (Ptr{Void}, Ptr{Cdouble}), arg1, arg2)
-end
-
-function GetPObjective(arg1::Ptr{Void}, arg2)
-    ccall((:DSDPGetPObjective, libdsdp), Cint, (Ptr{Void}, Ptr{Cdouble}), arg1, arg2)
-end
-
-function GetPPObjective(arg1::Ptr{Void}, arg2)
-    ccall((:DSDPGetPPObjective, libdsdp), Cint, (Ptr{Void}, Ptr{Cdouble}), arg1, arg2)
-end
-
-function GetDualityGap(arg1::Ptr{Void}, arg2)
-    ccall((:DSDPGetDualityGap, libdsdp), Cint, (Ptr{Void}, Ptr{Cdouble}), arg1, arg2)
-end
-
-function GetScale(arg1::Ptr{Void}, arg2)
-    ccall((:DSDPGetScale, libdsdp), Cint, (Ptr{Void}, Ptr{Cdouble}), arg1, arg2)
-end
-
-function SetScale(arg1::Ptr{Void}, arg2::Cdouble)
-    ccall((:DSDPSetScale, libdsdp), Cint, (Ptr{Void}, Cdouble), arg1, arg2)
-end
-
-function GetPenaltyParameter(arg1::Ptr{Void}, arg2)
-    ccall((:DSDPGetPenaltyParameter, libdsdp), Cint, (Ptr{Void}, Ptr{Cdouble}), arg1, arg2)
-end
-
-function GetPenalty(arg1::Ptr{Void}, arg2)
-    ccall((:DSDPGetPenalty, libdsdp), Cint, (Ptr{Void}, Ptr{Cdouble}), arg1, arg2)
-end
-
-function CopyB(arg1::Ptr{Void}, arg2, arg3::Integer)
-    ccall((:DSDPCopyB, libdsdp), Cint, (Ptr{Void}, Ptr{Cdouble}, Cint), arg1, arg2, arg3)
-end
-
-function SetR0(arg1::Ptr{Void}, arg2::Cdouble)
-    ccall((:DSDPSetR0, libdsdp), Cint, (Ptr{Void}, Cdouble), arg1, arg2)
-end
-
-function GetR(arg1::Ptr{Void}, arg2)
-    ccall((:DSDPGetR, libdsdp), Cint, (Ptr{Void}, Ptr{Cdouble}), arg1, arg2)
-end
-
-function SetRTolerance(arg1::Ptr{Void}, arg2::Cdouble)
-    ccall((:DSDPSetRTolerance, libdsdp), Cint, (Ptr{Void}, Cdouble), arg1, arg2)
-end
-
-function GetRTolerance(arg1::Ptr{Void}, arg2)
-    ccall((:DSDPGetRTolerance, libdsdp), Cint, (Ptr{Void}, Ptr{Cdouble}), arg1, arg2)
-end
-
-function SetY0(arg1::Ptr{Void}, arg2::Integer, arg3::Cdouble)
-    ccall((:DSDPSetY0, libdsdp), Cint, (Ptr{Void}, Cint, Cdouble), arg1, arg2, arg3)
-end
-
-function GetY(arg1::Ptr{Void}, arg2, arg3::Integer)
-    ccall((:DSDPGetY, libdsdp), Cint, (Ptr{Void}, Ptr{Cdouble}, Cint), arg1, arg2, arg3)
-end
-
-function GetYMakeX(arg1::Ptr{Void}, arg2, arg3::Integer)
-    ccall((:DSDPGetYMakeX, libdsdp), Cint, (Ptr{Void}, Ptr{Cdouble}, Cint), arg1, arg2, arg3)
-end
-
-function GetDYMakeX(arg1::Ptr{Void}, arg2, arg3::Integer)
-    ccall((:DSDPGetDYMakeX, libdsdp), Cint, (Ptr{Void}, Ptr{Cdouble}, Cint), arg1, arg2, arg3)
-end
-
-function GetMuMakeX(arg1::Ptr{Void}, arg2)
-    ccall((:DSDPGetMuMakeX, libdsdp), Cint, (Ptr{Void}, Ptr{Cdouble}), arg1, arg2)
-end
-
-function GetBarrierParameter(arg1::Ptr{Void}, arg2)
-    ccall((:DSDPGetBarrierParameter, libdsdp), Cint, (Ptr{Void}, Ptr{Cdouble}), arg1, arg2)
-end
-
-function SetBarrierParameter(arg1::Ptr{Void}, arg2::Cdouble)
-    ccall((:DSDPSetBarrierParameter, libdsdp), Cint, (Ptr{Void}, Cdouble), arg1, arg2)
-end
-
-function ReuseMatrix(arg1::Ptr{Void}, arg2::Integer)
-    ccall((:DSDPReuseMatrix, libdsdp), Cint, (Ptr{Void}, Cint), arg1, arg2)
-end
-
-function GetReuseMatrix(arg1::Ptr{Void}, arg2)
-    ccall((:DSDPGetReuseMatrix, libdsdp), Cint, (Ptr{Void}, Ptr{Cint}), arg1, arg2)
-end
 
-function GetDimension(arg1::Ptr{Void}, arg2)
-    ccall((:DSDPGetDimension, libdsdp), Cint, (Ptr{Void}, Ptr{Cdouble}), arg1, arg2)
+function GetDimension(dsdp::DSDPT, arg2)
+    @dsdp_ccall DSDPGetDimension (DSDPT, Ptr{Cdouble}) dsdp arg2
 end
 
-function SetMaxIts(arg1::Ptr{Void}, arg2::Integer)
-    ccall((:DSDPSetMaxIts, libdsdp), Cint, (Ptr{Void}, Cint), arg1, arg2)
+function SetMaxIts(dsdp::DSDPT, arg2::Integer)
+    @dsdp_ccall DSDPSetMaxIts (DSDPT, Cint) dsdp arg2
 end
 
-function GetMaxIts(arg1::Ptr{Void}, arg2)
-    ccall((:DSDPGetMaxIts, libdsdp), Cint, (Ptr{Void}, Ptr{Cint}), arg1, arg2)
+function GetMaxIts(dsdp::DSDPT, arg2)
+    @dsdp_ccall DSDPGetMaxIts (DSDPT, Ptr{Cint}) dsdp arg2
 end
 
-function SetStepTolerance(arg1::Ptr{Void}, arg2::Cdouble)
-    ccall((:DSDPSetStepTolerance, libdsdp), Cint, (Ptr{Void}, Cdouble), arg1, arg2)
+function SetStepTolerance(dsdp::DSDPT, arg2::Cdouble)
+    @dsdp_ccall DSDPSetStepTolerance (DSDPT, Cdouble) dsdp arg2
 end
 
-function GetStepTolerance(arg1::Ptr{Void}, arg2)
-    ccall((:DSDPGetStepTolerance, libdsdp), Cint, (Ptr{Void}, Ptr{Cdouble}), arg1, arg2)
+function GetStepTolerance(dsdp::DSDPT, arg2)
+    @dsdp_ccall DSDPGetStepTolerance (DSDPT, Ptr{Cdouble}) dsdp arg2
 end
 
-function SetGapTolerance(arg1::Ptr{Void}, arg2::Cdouble)
-    ccall((:DSDPSetGapTolerance, libdsdp), Cint, (Ptr{Void}, Cdouble), arg1, arg2)
+function SetGapTolerance(dsdp::DSDPT, arg2::Cdouble)
+    @dsdp_ccall DSDPSetGapTolerance (DSDPT, Cdouble) dsdp arg2
 end
 
-function GetGapTolerance(arg1::Ptr{Void}, arg2)
-    ccall((:DSDPGetGapTolerance, libdsdp), Cint, (Ptr{Void}, Ptr{Cdouble}), arg1, arg2)
+function GetGapTolerance(dsdp::DSDPT, arg2)
+    @dsdp_ccall DSDPGetGapTolerance (DSDPT, Ptr{Cdouble}) dsdp arg2
 end
 
-function SetPNormTolerance(dsdp::Ptr{Void}, arg2::Real)
-    ccall((:DSDPSetPNormTolerance, libdsdp), Cint, (Ptr{Void}, Cdouble), dsdp, arg2)
+function SetPNormTolerance(dsdp::DSDPT, arg2::Real)
+    @dsdp_ccall DSDPSetPNormTolerance (DSDPT, Cdouble) dsdp arg2
 end
 
-function GetPNormTolerance(arg1::Ptr{Void}, arg2)
-    ccall((:DSDPGetPNormTolerance, libdsdp), Cint, (Ptr{Void}, Ptr{Cdouble}), arg1, arg2)
+function GetPNormTolerance(dsdp::DSDPT, arg2)
+    @dsdp_ccall DSDPGetPNormTolerance (DSDPT, Ptr{Cdouble}) dsdp arg2
 end
 
-function SetDualBound(arg1::Ptr{Void}, arg2::Cdouble)
-    ccall((:DSDPSetDualBound, libdsdp), Cint, (Ptr{Void}, Cdouble), arg1, arg2)
+function SetDualBound(dsdp::DSDPT, arg2::Cdouble)
+    @dsdp_ccall DSDPSetDualBound (DSDPT, Cdouble) dsdp arg2
 end
 
-function GetDualBound(arg1::Ptr{Void}, arg2)
-    ccall((:DSDPGetDualBound, libdsdp), Cint, (Ptr{Void}, Ptr{Cdouble}), arg1, arg2)
+function GetDualBound(dsdp::DSDPT, arg2)
+    @dsdp_ccall DSDPGetDualBound (DSDPT, Ptr{Cdouble}) dsdp arg2
 end
 
-function SetPTolerance(arg1::Ptr{Void}, arg2::Cdouble)
-    ccall((:DSDPSetPTolerance, libdsdp), Cint, (Ptr{Void}, Cdouble), arg1, arg2)
+function SetPTolerance(dsdp::DSDPT, arg2::Cdouble)
+    @dsdp_ccall DSDPSetPTolerance (DSDPT, Cdouble) dsdp arg2
 end
 
-function GetPTolerance(arg1::Ptr{Void}, arg2)
-    ccall((:DSDPGetPTolerance, libdsdp), Cint, (Ptr{Void}, Ptr{Cdouble}), arg1, arg2)
+function GetPTolerance(dsdp::DSDPT, arg2)
+    @dsdp_ccall DSDPGetPTolerance (DSDPT, Ptr{Cdouble}) dsdp arg2
 end
 
-function GetPInfeasibility(arg1::Ptr{Void}, arg2)
-    ccall((:DSDPGetPInfeasibility, libdsdp), Cint, (Ptr{Void}, Ptr{Cdouble}), arg1, arg2)
+function GetPInfeasibility(dsdp::DSDPT, arg2)
+    @dsdp_ccall DSDPGetPInfeasibility (DSDPT, Ptr{Cdouble}) dsdp arg2
 end
 
-function SetMaxTrustRadius(arg1::Ptr{Void}, arg2::Cdouble)
-    ccall((:DSDPSetMaxTrustRadius, libdsdp), Cint, (Ptr{Void}, Cdouble), arg1, arg2)
+function SetMaxTrustRadius(dsdp::DSDPT, arg2::Cdouble)
+    @dsdp_ccall DSDPSetMaxTrustRadius (DSDPT, Cdouble) dsdp arg2
 end
 
-function GetMaxTrustRadius(arg1::Ptr{Void}, arg2)
-    ccall((:DSDPGetMaxTrustRadius, libdsdp), Cint, (Ptr{Void}, Ptr{Cdouble}), arg1, arg2)
+function GetMaxTrustRadius(dsdp::DSDPT, arg2)
+    @dsdp_ccall DSDPGetMaxTrustRadius (DSDPT, Ptr{Cdouble}) dsdp arg2
 end
 
-function StopReason(dsdp::Ptr{Void})
+function StopReason(dsdp::DSDPT)
     stop = Ref{DSDPTerminationReason}()
-    ccall((:DSDPStopReason, libdsdp), Cint, (Ptr{Void}, Ref{DSDPTerminationReason}), dsdp, stop)
+    @dsdp_ccall DSDPStopReason (DSDPT, Ref{DSDPTerminationReason}) dsdp stop
     stop[]
 end
 
-function GetSolutionType(arg1::Ptr{Void}, arg2)
-    ccall((:DSDPGetSolutionType, libdsdp), Cint, (Ptr{Void}, Ptr{DSDPSolutionType}), arg1, arg2)
+function GetSolutionType(dsdp::DSDPT)
+    sol = Ref{DSDPSolutionType}()
+    @dsdp_ccall DSDPGetSolutionType (DSDPT, Ref{DSDPSolutionType}) dsdp sol
+    sol[]
 end
 
-function SetPotentialParameter(arg1::Ptr{Void}, arg2::Real)
-    ccall((:DSDPSetPotentialParameter, libdsdp), Cint, (Ptr{Void}, Cdouble), arg1, arg2)
+function SetPotentialParameter(dsdp::DSDPT, arg2::Real)
+    @dsdp_ccall DSDPSetPotentialParameter (DSDPT, Cdouble) dsdp arg2
 end
 
-function GetPotentialParameter(arg1::Ptr{Void}, arg2)
-    ccall((:DSDPGetPotentialParameter, libdsdp), Cint, (Ptr{Void}, Ptr{Cdouble}), arg1, arg2)
+function GetPotentialParameter(dsdp::DSDPT, arg2)
+    @dsdp_ccall DSDPGetPotentialParameter (DSDPT, Ptr{Cdouble}) dsdp arg2
 end
 
-function UseDynamicRho(arg1::Ptr{Void}, arg2::Integer)
-    ccall((:DSDPUseDynamicRho, libdsdp), Cint, (Ptr{Void}, Cint), arg1, arg2)
+function UseDynamicRho(dsdp::DSDPT, arg2::Integer)
+    @dsdp_ccall DSDPUseDynamicRho (DSDPT, Cint) dsdp arg2
 end
 
-function GetPotential(arg1::Ptr{Void}, arg2)
-    ccall((:DSDPGetPotential, libdsdp), Cint, (Ptr{Void}, Ptr{Cdouble}), arg1, arg2)
+function GetPotential(dsdp::DSDPT, arg2)
+    @dsdp_ccall DSDPGetPotential (DSDPT, Ptr{Cdouble}) dsdp arg2
 end
 
-function UseLAPACKForSchur(arg1::Ptr{Void}, arg2::Integer)
-    ccall((:DSDPUseLAPACKForSchur, libdsdp), Cint, (Ptr{Void}, Cint), arg1, arg2)
+function UseLAPACKForSchur(dsdp::DSDPT, arg2::Integer)
+    @dsdp_ccall DSDPUseLAPACKForSchur (DSDPT, Cint) dsdp arg2
 end
 
-function GetNumberOfVariables(arg1::Ptr{Void}, arg2)
-    ccall((:DSDPGetNumberOfVariables, libdsdp), Cint, (Ptr{Void}, Ptr{Cint}), arg1, arg2)
+function GetNumberOfVariables(dsdp::DSDPT, arg2)
+    @dsdp_ccall DSDPGetNumberOfVariables (DSDPT, Ptr{Cint}) dsdp arg2
 end
 
-function GetFinalErrors(arg1::Ptr{Void}, arg2::NTuple{6, Cdouble})
-    ccall((:DSDPGetFinalErrors, libdsdp), Cint, (Ptr{Void}, NTuple{6, Cdouble}), arg1, arg2)
+function GetFinalErrors(dsdp::DSDPT, arg2::NTuple{6, Cdouble})
+    @dsdp_ccall DSDPGetFinalErrors (DSDPT, NTuple{6, Cdouble}) dsdp arg2
 end
 
-function GetGapHistory(arg1::Ptr{Void}, arg2, arg3::Integer)
-    ccall((:DSDPGetGapHistory, libdsdp), Cint, (Ptr{Void}, Ptr{Cdouble}, Cint), arg1, arg2, arg3)
+function GetGapHistory(dsdp::DSDPT, arg2, arg3::Integer)
+    @dsdp_ccall DSDPGetGapHistory (DSDPT, Ptr{Cdouble}, Cint) dsdp arg2 arg3
 end
 
-function GetRHistory(arg1::Ptr{Void}, arg2, arg3::Integer)
-    ccall((:DSDPGetRHistory, libdsdp), Cint, (Ptr{Void}, Ptr{Cdouble}, Cint), arg1, arg2, arg3)
+function GetRHistory(dsdp::DSDPT, arg2, arg3::Integer)
+    @dsdp_ccall DSDPGetRHistory (DSDPT, Ptr{Cdouble}, Cint) dsdp arg2 arg3
 end
 
-function GetIts(arg1::Ptr{Void}, arg2)
-    ccall((:DSDPGetIts, libdsdp), Cint, (Ptr{Void}, Ptr{Cint}), arg1, arg2)
+function GetIts(dsdp::DSDPT, arg2)
+    @dsdp_ccall DSDPGetIts (DSDPT, Ptr{Cint}) dsdp arg2
 end
 
-function GetPnorm(arg1::Ptr{Void}, arg2)
-    ccall((:DSDPGetPnorm, libdsdp), Cint, (Ptr{Void}, Ptr{Cdouble}), arg1, arg2)
+function GetPnorm(dsdp::DSDPT, arg2)
+    @dsdp_ccall DSDPGetPnorm (DSDPT, Ptr{Cdouble}) dsdp arg2
 end
 
-function GetStepLengths(arg1::Ptr{Void}, arg2, arg3)
-    ccall((:DSDPGetStepLengths, libdsdp), Cint, (Ptr{Void}, Ptr{Cdouble}, Ptr{Cdouble}), arg1, arg2, arg3)
+function GetStepLengths(dsdp::DSDPT, arg2, arg3)
+    @dsdp_ccall DSDPGetStepLengths (DSDPT, Ptr{Cdouble}, Ptr{Cdouble}) dsdp arg2 arg3
 end
 
-function SetMonitor(arg1::Ptr{Void}, arg2, arg3)
-    ccall((:DSDPSetMonitor, libdsdp), Cint, (Ptr{Void}, Ptr{Void}, Ptr{Void}), arg1, arg2, arg3)
+function SetMonitor(dsdp::DSDPT, arg2, arg3)
+    @dsdp_ccall DSDPSetMonitor (DSDPT, DSDPT, DSDPT) dsdp arg2 arg3
 end
 
-function SetStandardMonitor(dsdp::Ptr{Void}, arg2::Integer)
-    ccall((:DSDPSetStandardMonitor, libdsdp), Cint, (Ptr{Void}, Cint), dsdp, arg2)
+function SetStandardMonitor(dsdp::DSDPT, arg2::Integer)
+    @dsdp_ccall DSDPSetStandardMonitor (DSDPT, Cint) dsdp arg2
 end
 
-function SetFileMonitor(arg1::Ptr{Void}, arg2::Integer)
-    ccall((:DSDPSetFileMonitor, libdsdp), Cint, (Ptr{Void}, Cint), arg1, arg2)
+function SetFileMonitor(dsdp::DSDPT, arg2::Integer)
+    @dsdp_ccall DSDPSetFileMonitor (DSDPT, Cint) dsdp arg2
 end
 
-function SetPenaltyParameter(arg1::Ptr{Void}, arg2::Cdouble)
-    ccall((:DSDPSetPenaltyParameter, libdsdp), Cint, (Ptr{Void}, Cdouble), arg1, arg2)
+function SetPenaltyParameter(dsdp::DSDPT, arg2::Cdouble)
+    @dsdp_ccall DSDPSetPenaltyParameter (DSDPT, Cdouble) dsdp arg2
 end
 
-function UsePenalty(arg1::Ptr{Void}, arg2::Integer)
-    ccall((:DSDPUsePenalty, libdsdp), Cint, (Ptr{Void}, Cint), arg1, arg2)
+function UsePenalty(dsdp::DSDPT, arg2::Integer)
+    @dsdp_ccall DSDPUsePenalty (DSDPT, Cint) dsdp arg2
 end
 
 function PrintLogInfo(arg1::Integer)
-    ccall((:DSDPPrintLogInfo, libdsdp), Cint, (Cint,), arg1)
+    @dsdp_ccall DSDPPrintLogInfo (Cint,) arg1
 end
 
-function ComputeMinimumXEigenvalue(arg1::Ptr{Void}, arg2)
-    ccall((:DSDPComputeMinimumXEigenvalue, libdsdp), Cint, (Ptr{Void}, Ptr{Cdouble}), arg1, arg2)
+function ComputeMinimumXEigenvalue(dsdp::DSDPT, arg2)
+    @dsdp_ccall DSDPComputeMinimumXEigenvalue (DSDPT, Ptr{Cdouble}) dsdp arg2
 end
 
-function GetTraceX(dsdp::Ptr{Void}, arg1)
-    ccall((:DSDPGetTraceX, libdsdp), Cint, (Ptr{Void}, Ptr{Cdouble}), dsdp, arg1)
+function GetTraceX(dsdp::DSDPT, sdpcone)
+    @dsdp_ccall DSDPGetTraceX (DSDPT, Ptr{Cdouble}) dsdp sdpcone
 end
 
-function SetZBar(arg1::Ptr{Void}, arg2::Cdouble)
-    ccall((:DSDPSetZBar, libdsdp), Cint, (Ptr{Void}, Cdouble), arg1, arg2)
+function SetZBar(dsdp::DSDPT, arg2::Cdouble)
+    @dsdp_ccall DSDPSetZBar (DSDPT, Cdouble) dsdp arg2
 end
 
-function SetDualLowerBound(arg1::Ptr{Void}, arg2::Cdouble)
-    ccall((:DSDPSetDualLowerBound, libdsdp), Cint, (Ptr{Void}, Cdouble), arg1, arg2)
+function SetDualLowerBound(dsdp::DSDPT, arg2::Cdouble)
+    @dsdp_ccall DSDPSetDualLowerBound (DSDPT, Cdouble) dsdp arg2
 end
 
-function GetDataNorms(arg1::Ptr{Void}, arg2::NTuple{3, Cdouble})
-    ccall((:DSDPGetDataNorms, libdsdp), Cint, (Ptr{Void}, NTuple{3, Cdouble}), arg1, arg2)
+function GetDataNorms(dsdp::DSDPT, arg2::NTuple{3, Cdouble})
+    @dsdp_ccall DSDPGetDataNorms (DSDPT, NTuple{3, Cdouble}) dsdp arg2
 end
 
-function GetYMaxNorm(arg1::Ptr{Void}, arg2)
-    ccall((:DSDPGetYMaxNorm, libdsdp), Cint, (Ptr{Void}, Ptr{Cdouble}), arg1, arg2)
+function GetYMaxNorm(dsdp::DSDPT, arg2)
+    @dsdp_ccall DSDPGetYMaxNorm (DSDPT, Ptr{Cdouble}) dsdp arg2
 end
 
-function SDPConeUseFullSymmetricFormat(arg1::SDPCone, arg2::Integer)
-    ccall((:SDPConeUseFullSymmetricFormat, libdsdp), Cint, (SDPCone, Cint), arg1, arg2)
+function BoundDualVariables(dsdp::DSDPT, arg2::Cdouble, arg3::Cdouble)
+    @dsdp_ccall DSDPBoundDualVariables (DSDPT, Cdouble, Cdouble) dsdp arg2 arg3
 end
 
-function SDPConeUsePackedFormat(arg1::SDPCone, arg2::Integer)
-    ccall((:SDPConeUsePackedFormat, libdsdp), Cint, (SDPCone, Cint), arg1, arg2)
+function SetYBounds(dsdp::DSDPT, arg2::Cdouble, arg3::Cdouble)
+    @dsdp_ccall DSDPSetYBounds (DSDPT, Cdouble, Cdouble) dsdp arg2 arg3
 end
 
-function SetFixedVariable(arg1::Ptr{Void}, arg2::Integer, arg3::Cdouble)
-    ccall((:DSDPSetFixedVariable, libdsdp), Cint, (Ptr{Void}, Cint, Cdouble), arg1, arg2, arg3)
+function GetYBounds(dsdp::DSDPT, arg2, arg3)
+    @dsdp_ccall DSDPGetYBounds (DSDPT, Ptr{Cdouble}, Ptr{Cdouble}) dsdp arg2 arg3
 end
 
-function SetFixedVariables(arg1::Ptr{Void}, arg2, arg3, arg4, arg5::Integer)
-    ccall((:DSDPSetFixedVariables, libdsdp), Cint, (Ptr{Void}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Cint), arg1, arg2, arg3, arg4, arg5)
+function SetFixedVariable(dsdp::DSDPT, arg2::Integer, arg3::Cdouble)
+    @dsdp_ccall DSDPSetFixedVariable (DSDPT, Cint, Cdouble) dsdp arg2 arg3
 end
 
-function GetFixedYX(arg1::Ptr{Void}, arg2::Integer, arg3)
-    ccall((:DSDPGetFixedYX, libdsdp), Cint, (Ptr{Void}, Cint, Ptr{Cdouble}), arg1, arg2, arg3)
+function SetFixedVariables(dsdp::DSDPT, arg2, arg3, arg4, arg5::Integer)
+    @dsdp_ccall DSDPSetFixedVariables (DSDPT, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Cint) dsdp arg2 arg3 arg4 arg5
 end
 
-function View(arg1::Ptr{Void})
-    ccall((:DSDPView, libdsdp), Cint, (Ptr{Void},), arg1)
+function GetFixedYX(dsdp::DSDPT, arg2::Integer, arg3)
+    @dsdp_ccall DSDPGetFixedYX (DSDPT, Cint, Ptr{Cdouble}) dsdp arg2 arg3
+end
+
+function View(dsdp::DSDPT)
+    @dsdp_ccall DSDPView (DSDPT,) dsdp
 end
 
 function PrintOptions()
     ccall((:DSDPPrintOptions, libdsdp), Cint, ())
 end
 
-function PrintData(arg1::Ptr{Void}, arg2::SDPCone, arg3::LPCone)
-    ccall((:DSDPPrintData, libdsdp), Cint, (Ptr{Void}, SDPCone, LPCone), arg1, arg2, arg3)
+function SetOptions(dsdp::DSDPT, arg2, arg3::Integer)
+    @dsdp_ccall DSDPSetOptions (DSDPT, Ptr{Cstring}, Cint) dsdp arg2 arg3
 end
 
-#function PrintSolution(arg1, arg2::Ptr{Void}, arg3::SDPCone, arg4::LPCone)
-#    ccall((:DSDPPrintSolution, libdsdp), Cint, (Ptr{FILE}, DSDP, SDPCone, LPCone), arg1, arg2, arg3, arg4)
-#end
-
-function SetOptions(arg1::Ptr{Void}, arg2, arg3::Integer)
-    ccall((:DSDPSetOptions, libdsdp), Cint, (Ptr{Void}, Ptr{Cstring}, Cint), arg1, arg2, arg3)
+function ReadOptions(dsdp::DSDPT, arg2)
+    @dsdp_ccall DSDPReadOptions (DSDPT, Ptr{UInt8}) dsdp arg2
 end
 
-function ReadOptions(arg1::Ptr{Void}, arg2)
-    ccall((:DSDPReadOptions, libdsdp), Cint, (Ptr{Void}, Ptr{UInt8}), arg1, arg2)
-end
-
-function SetDestroyRoutine(arg1::Ptr{Void}, arg2, arg3)
-    ccall((:DSDPSetDestroyRoutine, libdsdp), Cint, (Ptr{Void}, Ptr{Void}, Ptr{Void}), arg1, arg2, arg3)
+function SetDestroyRoutine(dsdp::DSDPT, arg2, arg3)
+    @dsdp_ccall DSDPSetDestroyRoutine (DSDPT, DSDPT, DSDPT) dsdp arg2 arg3
 end

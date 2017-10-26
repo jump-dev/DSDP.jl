@@ -1,15 +1,42 @@
-function di(i)
-    j = i - Cint(1)
-    div(j * i, Cint(2)) + j
+function di(u, v)
+    u, v = max(u, v), min(u, v)
+    div((u - Cint(1)) * u, Cint(2)) + (v - Cint(1))
 end
+di(u) = di(u, u)
+
+signz(t) = t < 0 ? -1 : 1
+
+# Apply the Goemens and Williamson randomized cut algorithm to the SDP relaxation of the max-cut problem
+function MaxCutRandomized(sdpcone::SDPCone.SDPConeT, nnodes::Integer)
+    ymin = Cdouble(0)
+
+    vv = Vector{Cdouble}(nnodes)
+    tt = Vector{Cdouble}(nnodes)
+    cc = Vector{Cdouble}(nnodes + 2)
+    SDPCone.ComputeXV(sdpcone, 0)
+    for i in 1:nnodes
+        for j in eachindex(vv)
+            dd = rand() - .5
+            vv[j] = tan(π * dd)
+        end
+        SDPCone.XVMultiply(sdpcone, 0, vv, tt)
+        map!(signz, tt, tt)
+        map!(zero, cc, cc)
+        SDPCone.AddXVAV(sdpcone, 0, tt, cc)
+        if cc[1] < ymin
+            ymin = cc[1]
+        end
+    end
+    ymin
+end
+
 
 function maxcut(nnodes, edges)
     nedges = length(edges)
     dsdp = DSDP.Create(nnodes)
     sdpcone = DSDP.CreateSDPCone(dsdp, 1)
 
-    DSDP.SDPConeSetBlockSize(sdpcone, 0, nnodes)
-
+    SDPCone.SetBlockSize(sdpcone, 0, nnodes)
 
     # Formulate the problem from the data
     # Diagonal elements equal 1.0
@@ -21,7 +48,7 @@ function maxcut(nnodes, edges)
 
     for i in 1:nnodes
         DSDP.SetDualObjective(dsdp, i, 1.0)
-        DSDP.SDPConeSetASparseVecMat(sdpcone, 0, i, nnodes, 1.0, 0, pointer(iptr, i), pointer(diag, i), 1)
+        SDPCone.SetASparseVecMat(sdpcone, 0, i, nnodes, 1.0, 0, pointer(iptr, i), pointer(diag, i), 1)
     end
 
     # C matrix is the Laplacian of the adjacency matrix
@@ -32,7 +59,7 @@ function maxcut(nnodes, edges)
     indd[nedges+(1:nnodes)] = iptr
     tval = 0.0
     for (i, (u, v, w)) in enumerate(edges)
-        indd[i] = (u-1) * u / 2 + v-1
+        indd[i] = di(u, v)
         tval += abs(w)
         val[i] = w / 4
         val[nedges+u]-= w/4
@@ -41,8 +68,8 @@ function maxcut(nnodes, edges)
         yy[v] -= abs(w/2)
     end
 
-    DSDP.SDPConeSetASparseVecMat(sdpcone,0,0,nnodes,1.0,0,pointer(indd),pointer(val),nedges)
-    DSDP.SDPConeAddASparseVecMat(sdpcone,0,0,nnodes,1.0,0,pointer(indd,nedges+1),pointer(val,nedges+1),nnodes)
+    SDPCone.SetASparseVecMat(sdpcone,0,0,nnodes,1.0,0,pointer(indd),pointer(val),nedges)
+    SDPCone.AddASparseVecMat(sdpcone,0,0,nnodes,1.0,0,pointer(indd,nedges+1),pointer(val,nedges+1),nnodes)
 
     # Initial Point
     DSDP.SetR0(dsdp,0.0)
@@ -62,91 +89,31 @@ function maxcut(nnodes, edges)
 
     DSDP.Setup(dsdp)
 
-    info = DSDP.Solve(dsdp)
-    iszero(info) || error("Numerical error")
+    DSDP.Solve(dsdp)
     reason = DSDP.StopReason(dsdp)
 
-    if reason != DSDP.DSDP_INFEASIBLE_START
-        # Randomized solution strategy
-#        info=MaxCutRandomized(sdpcone,nnodes)
-#        if false # Look at the solution
-#            int n; double *xx,*y=diag
-#            info = DSDPGetY(dsdp, y, nnodes)
-#            info = DSDPComputeX(dsdp)
-#            DSDPCHKERR(info)
-#            info = SDPConeGetXArray(sdpcone,0,&xx,&n)
-#        end
-    end
-    info = DSDP.Destroy(dsdp)
+    @test reason != DSDP.DSDP_INFEASIBLE_START
+    @test DSDP.GetDObjective(dsdp) ≈ -9.250079 rtol=1e-7
+    @test DSDP.GetDDObjective(dsdp) ≈ -9.250079 rtol=1e-7
+    @test DSDP.GetPObjective(dsdp) ≈ 1e10
+    @test DSDP.GetPPObjective(dsdp) ≈ -9.240522 rtol=1e-7
+    @test DSDP.GetDualityGap(dsdp) ≈ 0.009557113 rtol=1e-7
+
+    # Randomized solution strategy
+    @test MaxCutRandomized(sdpcone, nnodes) ≈ -9.25
+
+    DSDP.Destroy(dsdp)
 end
 
-maxcut(1, [(1, 1, 1)])
-
-
-#    # Initial Point
-#    info = DSDPSetR0(dsdp,0.0)
-#    info = DSDPSetZBar(dsdp,10*tval+1.0)
-#    for i in 1:nnodes
-#        info = DSDPSetY0(dsdp, i+1, 10*yy[i])
-#    end
-#    iszero(info) || return info
-#
-#    # Get read to go
-#    info = DSDPSetGapTolerance(dsdp, 0.001)
-#    info = DSDPSetPotentialParameter(dsdp, 5)
-#    info = DSDPReuseMatrix(dsdp, 0)
-#    info = DSDPSetPNormTolerance(dsdp, 1.0)
-#    #info = TCheckArgs(dsdp,argc,argv)
-#
-#    iszero(info) || error("Out of memory")
-#    info = DSDPSetStandardMonitor(dsdp,1)
-#
-#    info = DSDPSetup(dsdp)
-#    iszero(info) || error("Out of memory")
-#
-#    info = DSDPSolve(dsdp)
-#    iszero(info) || error("Numerical error")
-#    info = DSDPStopReason(dsdp, &reason)
-#
-#    if reason != DSDP_INFEASIBLE_START
-#        # Randomized solution strategy
-#        info=MaxCutRandomized(sdpcone,nnodes)
-#        if false # Look at the solution
-#            int n; double *xx,*y=diag
-#            info = DSDPGetY(dsdp, y, nnodes)
-#            info = DSDPComputeX(dsdp)
-#            DSDPCHKERR(info)
-#            info = SDPConeGetXArray(sdpcone,0,&xx,&n)
-#        end
-#    end
-#    info = DSDPDestroy(dsdp)
-#end
-#
-#signz(t) = t < 0 ? -1 : 1
-#
-## maxcutrandomized(sdpcone::SDPCone, nnodes::Int)
-## Apply the Goemens and Williamson randomized cut algorithm to the SDP relaxation of the max-cut problem
-## sdpcone the SDP cone
-## nnodes number of nodes in the graph
-#function maxcutrandomized(sdpcone::SDPCone, nnodes::Int)
-#    ymin = 0
-#
-#    vv = Vector{Cdouble}(nnodes)
-#    tt = Vector{Cdouble}(nnodes)
-#    cc = Vector{Cdouble}(nnodes+2)
-#    info = SDPConeComputeXV(sdpcone, 0, &derror)
-#    for i in 1:nnodes
-#        for j in 1:nnodes
-#            dd = rand() - .5
-#            vv[j] = tan(pi*dd)
-#        end
-#        info = SDPConeXVMultiply(sdpcone, 0, vv, tt, nnodes)
-#        map!(signz, tt)
-#        map!(zero, cc)
-#        info = SDPConeAddXVAV(sdpcone, 0, tt, nnodes, cc, nnodes+2)
-#        if cc[1] < ymin
-#            ymin = cc[1]
-#        end
-#    end
-#    printf("Best integer solution: %4.2f\n",ymin);
-#end
+@testset "DSDP MaxCut example" begin
+    const nnodes = 6
+    const edges = [(1, 2,   .3)
+                   (1, 4,  2.7)
+                   (1, 6,  1.5)
+                   (2, 3, -1.0)
+                   (2, 5,  1.45)
+                   (3, 4, -0.2)
+                   (4, 5,  1.2)
+                   (5, 6,  2.1)]
+    maxcut(nnodes, edges)
+end
