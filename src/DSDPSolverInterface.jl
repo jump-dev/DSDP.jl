@@ -47,6 +47,94 @@ function _free(m::DSDPSolverInstance)
     end
 end
 
+# Taken from src/solver/dsdpsetup.c
+const gettable_options = Dict(
+# Stopping parameters
+:MaxIts => 500,
+:GapTolerance => 1.0e-7, # 100<=nconstrs<=3000 => 1e-6, nconstrs>3000 => 5e-6
+:PNormTolerance => 1.0e30,
+:DualBound => 1.0e20,
+:StepTolerance => 5.0e-2,
+:RTolerance => 1.0e-6,
+:PTolerance => 1.0e-4,
+# Solver options
+:MaxTrustRadius => 1.0e10,
+:BarrierParameter => -1.0,
+:PotentialParameter => 5.0, # nconstrs>100 => 3.0
+:PenaltyParameter => 1.0e8,
+:ReuseMatrix => 4, # 100<nconstrs<=1000 => 7, nconstrs>1000 => 10
+:YBounds => (-1e7, 1e7))
+# TODO
+# UsePenalty(dsdp,0)
+# UseDynamicRho(dsdp,1)
+# DSDPLogInfoAllow(iloginfo,0)
+# DSDPSetFixedVariable[s]
+# DSDPSetDualLowerBound
+
+const options = Dict(
+# Solver options
+:R0 => -1.0,
+:ZBar => 1e10)
+
+const options_setters = Dict{Symbol, Function}()
+
+abstract type Option <: MOI.AbstractSolverAttribute end
+abstract type GettableOption <: Option end
+
+MOI.canget(solver::Union{DSDPSolver, DSDPSolverInstance}, ::Option) = true
+MOI.set!(solver::DSDPSolver, o::Option, val) = _dict_set!(solver.options, o, val)
+MOI.get(solver::DSDPSolver, o::Option) = _dict_get(solver.options, o)
+function MOI.set!(m::DSDPSolverInstance, o::Option, val)
+    # Need to set it in the dictionary so that it is also used when initinstance! is called again
+    _dict_set!(m.options, o, val)
+    _call_set!(m.dsdp, o, val)
+end
+
+MOI.get(m::DSDPSolverInstance, o::Option) = _dict_get(m.options, o)
+function MOI.get(m::DSDPSolverInstance, o::GettableOption)
+    if m.dsdp == C_NULL
+        _dict_get(m.options, o)
+    else
+        # May be different from _dict_get for ReuseMatrix, GapTolerance and PotentialParameter since it depends on nconstrs
+        _call_get(m.dsdp, o)
+    end
+end
+
+for (param, default) in gettable_options
+    getter = Symbol("Get" * string(param))
+    @eval begin
+        struct $param <: GettableOption
+        end
+        function _call_get(dsdp, ::$param)
+            $getter(dsdp)
+        end
+    end
+end
+
+for option in keys(options)
+    @eval begin
+        struct $option <: Option
+        end
+    end
+end
+
+for (param, default) in Iterators.flatten((options, gettable_options))
+    setter = Symbol("Set" * string(param))
+    sym = QuoteNode(param)
+    @eval begin
+        options_setters[$sym] = $setter
+        function _dict_set!(options, ::$param, val)
+            options[$sym] = val
+        end
+        function _dict_get(options, ::$param)
+            get(options, $sym, $default)
+        end
+        function _call_set!(dsdp, ::$param, val)
+            $setter(dsdp, val)
+        end
+    end
+end
+
 function SOI.initinstance!(m::DSDPSolverInstance, blkdims::Vector{Int}, nconstrs::Int)
     _free(m)
     @assert nconstrs >= 0
@@ -67,7 +155,12 @@ function SOI.initinstance!(m::DSDPSolverInstance, blkdims::Vector{Int}, nconstrs
     m.lpdvars = Int[]
     m.lpdrows = Int[]
     m.lpcoefs = Cdouble[]
+
     m.dsdp = Create(nconstrs)
+    for (option, value) in m.options
+        options_setters[option](m.dsdp, value)
+    end
+
     # TODO only create if necessary
     m.sdpcone = CreateSDPCone(m.dsdp, length(blkdims))
     for constr in 1:nconstrs
