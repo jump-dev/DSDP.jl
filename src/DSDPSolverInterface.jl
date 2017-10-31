@@ -30,13 +30,25 @@ mutable struct DSDPSolverInstance <: SOI.AbstractSDSolverInstance
 
     options::Dict{Symbol,Any}
     function DSDPSolverInstance(; kwargs...)
-        new(C_NULL, C_NULL, 0, Int[], Int[], C_NULL, 0, Int[], Int[], Cdouble[],
+        m = new(C_NULL, C_NULL, 0, Int[], Int[], C_NULL, 0, Int[], Int[], Cdouble[],
             true, true, Cdouble[], true, Dict{Symbol, Any}(kwargs))
+        finalizer(m, _free)
+        m
     end
 end
 SOI.SDSolverInstance(s::DSDPSolver) = DSDPSolverInstance(; s.options...)
 
+function _free(m::DSDPSolverInstance)
+    if m.dsdp != C_NULL
+        Destroy(m.dsdp)
+        m.dsdp = C_NULL
+        m.lpcone = C_NULL
+        m.sdpcone = C_NULL
+    end
+end
+
 function SOI.initinstance!(m::DSDPSolverInstance, blkdims::Vector{Int}, nconstrs::Int)
+    _free(m)
     @assert nconstrs >= 0
     m.nconstrs = nconstrs
     m.blkdims = blkdims
