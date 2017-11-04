@@ -72,16 +72,20 @@ function GetDualityGap(dsdp::DSDPT)
     dgap[]
 end
 
-function GetScale(dsdp::DSDPT, arg2)
-    @dsdp_ccall DSDPGetScale (DSDPT, Ptr{Cdouble}) dsdp arg2
+function GetScale(dsdp::DSDPT)
+    scale = Ref{Cdouble}()
+    @dsdp_ccall DSDPGetScale (DSDPT, Ref{Cdouble}) dsdp scale
+    scale[]
 end
 
-function SetScale(dsdp::DSDPT, arg2::Cdouble)
-    @dsdp_ccall DSDPSetScale (DSDPT, Cdouble) dsdp arg2
+function SetScale(dsdp::DSDPT, scale::Cdouble)
+    @dsdp_ccall DSDPSetScale (DSDPT, Cdouble) dsdp scale
 end
 
-function GetPenaltyParameter(dsdp::DSDPT, arg2)
-    @dsdp_ccall DSDPGetPenaltyParameter (DSDPT, Ptr{Cdouble}) dsdp arg2
+function GetPenaltyParameter(dsdp::DSDPT)
+    pp = Ref{Cdouble}()
+    @dsdp_ccall DSDPGetPenaltyParameter (DSDPT, Ref{Cdouble}) dsdp pp
+    pp[]
 end
 
 function GetPenalty(dsdp::DSDPT, arg2)
@@ -104,8 +108,10 @@ function SetRTolerance(dsdp::DSDPT, arg2::Cdouble)
     @dsdp_ccall DSDPSetRTolerance (DSDPT, Cdouble) dsdp arg2
 end
 
-function GetRTolerance(dsdp::DSDPT, arg2)
-    @dsdp_ccall DSDPGetRTolerance (DSDPT, Ptr{Cdouble}) dsdp arg2
+function GetRTolerance(dsdp::DSDPT)
+    rtol = Ref{Cdouble}()
+    @dsdp_ccall DSDPGetRTolerance (DSDPT, Ref{Cdouble}) dsdp rtol
+    rtol[]
 end
 
 function SetY0(dsdp::DSDPT, arg2::Integer, arg3::Cdouble)
@@ -128,20 +134,24 @@ function GetMuMakeX(dsdp::DSDPT, arg2)
     @dsdp_ccall DSDPGetMuMakeX (DSDPT, Ptr{Cdouble}) dsdp arg2
 end
 
-function GetBarrierParameter(dsdp::DSDPT, arg2)
-    @dsdp_ccall DSDPGetBarrierParameter (DSDPT, Ptr{Cdouble}) dsdp arg2
+function GetBarrierParameter(dsdp::DSDPT)
+    bp = Ref{Cdouble}()
+    @dsdp_ccall DSDPGetBarrierParameter (DSDPT, Ptr{Cdouble}) dsdp bp
+    bp[]
 end
 
 function SetBarrierParameter(dsdp::DSDPT, arg2::Cdouble)
     @dsdp_ccall DSDPSetBarrierParameter (DSDPT, Cdouble) dsdp arg2
 end
 
-function ReuseMatrix(dsdp::DSDPT, arg2::Integer)
+function SetReuseMatrix(dsdp::DSDPT, arg2::Integer)
     @dsdp_ccall DSDPReuseMatrix (DSDPT, Cint) dsdp arg2
 end
 
-function GetReuseMatrix(dsdp::DSDPT, arg2)
-    @dsdp_ccall DSDPGetReuseMatrix (DSDPT, Ptr{Cint}) dsdp arg2
+function GetReuseMatrix(dsdp::DSDPT)
+    reuse = Ref{Cint}()
+    @dsdp_ccall DSDPGetReuseMatrix (DSDPT, Ref{Cint}) dsdp reuse
+    reuse[]
 end
 
 function GetDimension(dsdp::DSDPT, arg2)
@@ -152,60 +162,76 @@ function SetMaxIts(dsdp::DSDPT, arg2::Integer)
     @dsdp_ccall DSDPSetMaxIts (DSDPT, Cint) dsdp arg2
 end
 
-function GetMaxIts(dsdp::DSDPT, arg2)
-    @dsdp_ccall DSDPGetMaxIts (DSDPT, Ptr{Cint}) dsdp arg2
+function GetMaxIts(dsdp::DSDPT)
+    maxits = Ref{Cint}()
+    @dsdp_ccall DSDPGetMaxIts (DSDPT, Ref{Cint}) dsdp maxits
+    maxits[]
 end
 
-function SetStepTolerance(dsdp::DSDPT, arg2::Cdouble)
+function SetStepTolerance(dsdp::DSDPT, steptol::Cdouble)
+    @assert steptol > 0
     @dsdp_ccall DSDPSetStepTolerance (DSDPT, Cdouble) dsdp arg2
 end
 
-function GetStepTolerance(dsdp::DSDPT, arg2)
-    @dsdp_ccall DSDPGetStepTolerance (DSDPT, Ptr{Cdouble}) dsdp arg2
+function GetStepTolerance(dsdp::DSDPT)
+    steptol = Ref{Cdouble}()
+    @dsdp_ccall DSDPGetStepTolerance (DSDPT, Ref{Cdouble}) dsdp steptol
+    steptol[]
 end
 
 function SetGapTolerance(dsdp::DSDPT, arg2::Cdouble)
     @dsdp_ccall DSDPSetGapTolerance (DSDPT, Cdouble) dsdp arg2
 end
 
-function GetGapTolerance(dsdp::DSDPT, arg2)
-    @dsdp_ccall DSDPGetGapTolerance (DSDPT, Ptr{Cdouble}) dsdp arg2
+function GetGapTolerance(dsdp::DSDPT)
+    gaptol = Ref{Cdouble}()
+    @dsdp_ccall DSDPGetGapTolerance (DSDPT, Ref{Cdouble}) dsdp gaptol
+    gaptol[]
 end
 
-function SetPNormTolerance(dsdp::DSDPT, arg2::Real)
-    @dsdp_ccall DSDPSetPNormTolerance (DSDPT, Cdouble) dsdp arg2
+function SetPNormTolerance(dsdp::DSDPT, pnormtol::Real)
+    @assert pnormtol > 0
+    @dsdp_ccall DSDPSetPNormTolerance (DSDPT, Cdouble) dsdp pnormtol
 end
 
-function GetPNormTolerance(dsdp::DSDPT, arg2)
-    @dsdp_ccall DSDPGetPNormTolerance (DSDPT, Ptr{Cdouble}) dsdp arg2
+function GetPNormTolerance(dsdp::DSDPT)
+    pnormtol = Ref{Cdouble}()
+    @dsdp_ccall DSDPGetPNormTolerance (DSDPT, Ref{Cdouble}) dsdp pnormtol
+    pnormtol[]
 end
 
 function SetDualBound(dsdp::DSDPT, arg2::Cdouble)
     @dsdp_ccall DSDPSetDualBound (DSDPT, Cdouble) dsdp arg2
 end
 
-function GetDualBound(dsdp::DSDPT, arg2)
-    @dsdp_ccall DSDPGetDualBound (DSDPT, Ptr{Cdouble}) dsdp arg2
+function GetDualBound(dsdp::DSDPT)
+    dualb = Ref{Cdouble}()
+    @dsdp_ccall DSDPGetDualBound (DSDPT, Ref{Cdouble}) dsdp dualb
+    dualb[]
 end
 
 function SetPTolerance(dsdp::DSDPT, arg2::Cdouble)
     @dsdp_ccall DSDPSetPTolerance (DSDPT, Cdouble) dsdp arg2
 end
 
-function GetPTolerance(dsdp::DSDPT, arg2)
-    @dsdp_ccall DSDPGetPTolerance (DSDPT, Ptr{Cdouble}) dsdp arg2
+function GetPTolerance(dsdp::DSDPT)
+    ptol = Ref{Cdouble}()
+    @dsdp_ccall DSDPGetPTolerance (DSDPT, Ref{Cdouble}) dsdp ptol
+    ptol[]
 end
 
 function GetPInfeasibility(dsdp::DSDPT, arg2)
     @dsdp_ccall DSDPGetPInfeasibility (DSDPT, Ptr{Cdouble}) dsdp arg2
 end
 
-function SetMaxTrustRadius(dsdp::DSDPT, arg2::Cdouble)
-    @dsdp_ccall DSDPSetMaxTrustRadius (DSDPT, Cdouble) dsdp arg2
+function SetMaxTrustRadius(dsdp::DSDPT, maxtrust::Cdouble)
+    @dsdp_ccall DSDPSetMaxTrustRadius (DSDPT, Cdouble) dsdp maxtrust
 end
 
-function GetMaxTrustRadius(dsdp::DSDPT, arg2)
-    @dsdp_ccall DSDPGetMaxTrustRadius (DSDPT, Ptr{Cdouble}) dsdp arg2
+function GetMaxTrustRadius(dsdp::DSDPT)
+    maxtrust = Ref{Cdouble}()
+    @dsdp_ccall DSDPGetMaxTrustRadius (DSDPT, Ptr{Cdouble}) dsdp maxtrust
+    maxtrust[]
 end
 
 function StopReason(dsdp::DSDPT)
@@ -220,12 +246,14 @@ function GetSolutionType(dsdp::DSDPT)
     sol[]
 end
 
-function SetPotentialParameter(dsdp::DSDPT, arg2::Real)
-    @dsdp_ccall DSDPSetPotentialParameter (DSDPT, Cdouble) dsdp arg2
+function SetPotentialParameter(dsdp::DSDPT, pp::Real)
+    @dsdp_ccall DSDPSetPotentialParameter (DSDPT, Cdouble) dsdp pp
 end
 
-function GetPotentialParameter(dsdp::DSDPT, arg2)
-    @dsdp_ccall DSDPGetPotentialParameter (DSDPT, Ptr{Cdouble}) dsdp arg2
+function GetPotentialParameter(dsdp::DSDPT)
+    pp = Ref{Cdouble}()
+    @dsdp_ccall DSDPGetPotentialParameter (DSDPT, Ref{Cdouble}) dsdp pp
+    pp[]
 end
 
 function UseDynamicRho(dsdp::DSDPT, arg2::Integer)
@@ -320,12 +348,15 @@ function BoundDualVariables(dsdp::DSDPT, arg2::Cdouble, arg3::Cdouble)
     @dsdp_ccall DSDPBoundDualVariables (DSDPT, Cdouble, Cdouble) dsdp arg2 arg3
 end
 
-function SetYBounds(dsdp::DSDPT, arg2::Cdouble, arg3::Cdouble)
-    @dsdp_ccall DSDPSetYBounds (DSDPT, Cdouble, Cdouble) dsdp arg2 arg3
+function SetYBounds(dsdp::DSDPT, ylow::Cdouble, yhigh::Cdouble)
+    @dsdp_ccall DSDPSetYBounds (DSDPT, Cdouble, Cdouble) dsdp ylow yhigh
 end
 
-function GetYBounds(dsdp::DSDPT, arg2, arg3)
-    @dsdp_ccall DSDPGetYBounds (DSDPT, Ptr{Cdouble}, Ptr{Cdouble}) dsdp arg2 arg3
+function GetYBounds(dsdp::DSDPT)
+    ylow = Ref{Cdouble}()
+    yhigh = Ref{Cdouble}()
+    @dsdp_ccall DSDPGetYBounds (DSDPT, Ref{Cdouble}, Ref{Cdouble}) dsdp ylow yhigh
+    ylow[], yhigh[]
 end
 
 function SetFixedVariable(dsdp::DSDPT, arg2::Integer, arg3::Cdouble)

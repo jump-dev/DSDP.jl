@@ -43,8 +43,8 @@ function CreateBCone(dsdp::DSDPT)
     bcone[]
 end
 
-function PrintData(dsdp::DSDPT, arg2::SDPCone.SDPConeT, arg3::LPCone.LPConeT)
-    @dsdp_ccall DSDPPrintData (DSDPT, SDPCone.SDPConeT, LPCone.LPConeT) dsdp arg2 arg3
+function PrintData(dsdp::DSDPT, sdpcone::SDPCone.SDPConeT, lpcone::LPCone.LPConeT)
+    @dsdp_ccall DSDPPrintData (DSDPT, SDPCone.SDPConeT, LPCone.LPConeT) dsdp sdpcone lpcone
 end
 
 #function PrintSolution(arg1, arg2::DSDPT, arg3::SDPCone.SDPConeT, arg4::LPCone.LPConeT)

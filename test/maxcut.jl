@@ -81,7 +81,7 @@ function maxcut(nnodes, edges)
     # Get read to go
     DSDP.SetGapTolerance(dsdp, 0.001)
     DSDP.SetPotentialParameter(dsdp, 5)
-    DSDP.ReuseMatrix(dsdp, 0)
+    DSDP.SetReuseMatrix(dsdp, 0)
     DSDP.SetPNormTolerance(dsdp, 1.0)
     #info = TCheckArgs(dsdp,argc,argv)
 
