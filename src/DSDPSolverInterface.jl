@@ -1,17 +1,12 @@
 using SemidefiniteOptInterface
-SOI = SemidefiniteOptInterface
+SDOI = SemidefiniteOptInterface
 
 using MathOptInterface
 MOI = MathOptInterface
 
-export DSDPSolver
+export DSDPInstance
 
-struct DSDPSolver <: SOI.AbstractSDSolver
-    options::Dict{Symbol,Any}
-end
-DSDPSolver(;kwargs...) = DSDPSolver(Dict{Symbol,Any}(kwargs))
-
-mutable struct DSDPSolverInstance <: SOI.AbstractSDSolverInstance
+mutable struct DSDPSolverInstance <: SDOI.AbstractSDSolverInstance
     dsdp::DSDPT
     lpcone::LPCone.LPConeT
     nconstrs::Int
@@ -36,7 +31,7 @@ mutable struct DSDPSolverInstance <: SOI.AbstractSDSolverInstance
         m
     end
 end
-SOI.SDSolverInstance(s::DSDPSolver) = DSDPSolverInstance(; s.options...)
+DSDPInstance(; kws...) = SDOI.SDOIInstance(DSDPSolverInstance(; kws...))
 
 function _free(m::DSDPSolverInstance)
     if m.dsdp != C_NULL
@@ -78,12 +73,10 @@ const options = Dict(
 
 const options_setters = Dict{Symbol, Function}()
 
-abstract type Option <: MOI.AbstractSolverAttribute end
+abstract type Option <: MOI.AbstractInstanceAttribute end
 abstract type GettableOption <: Option end
 
-MOI.canget(solver::Union{DSDPSolver, DSDPSolverInstance}, ::Option) = true
-MOI.set!(solver::DSDPSolver, o::Option, val) = _dict_set!(solver.options, o, val)
-MOI.get(solver::DSDPSolver, o::Option) = _dict_get(solver.options, o)
+MOI.canget(solver::DSDPSolverInstance, ::Option) = true
 function MOI.set!(m::DSDPSolverInstance, o::Option, val)
     # Need to set it in the dictionary so that it is also used when initinstance! is called again
     _dict_set!(m.options, o, val)
@@ -135,7 +128,7 @@ for (param, default) in Iterators.flatten((options, gettable_options))
     end
 end
 
-function SOI.initinstance!(m::DSDPSolverInstance, blkdims::Vector{Int}, nconstrs::Int)
+function SDOI.initinstance!(m::DSDPSolverInstance, blkdims::Vector{Int}, nconstrs::Int)
     _free(m)
     @assert nconstrs >= 0
     m.nconstrs = nconstrs
@@ -176,7 +169,7 @@ function SOI.initinstance!(m::DSDPSolverInstance, blkdims::Vector{Int}, nconstrs
     m.z_computed = false
 end
 
-function SOI.setconstraintconstant!(m::DSDPSolverInstance, val, constr::Integer)
+function SDOI.setconstraintconstant!(m::DSDPSolverInstance, val, constr::Integer)
     SetDualObjective(m.dsdp, constr, val)
 end
 function _setcoefficient!(m::DSDPSolverInstance, coef, constr::Integer, blk::Integer, i::Integer, j::Integer)
@@ -189,11 +182,11 @@ function _setcoefficient!(m::DSDPSolverInstance, coef, constr::Integer, blk::Int
         error("TODO")
     end
 end
-function SOI.setconstraintcoefficient!(m::DSDPSolverInstance, coef, constr::Integer, blk::Integer, i::Integer, j::Integer)
+function SDOI.setconstraintcoefficient!(m::DSDPSolverInstance, coef, constr::Integer, blk::Integer, i::Integer, j::Integer)
     _setcoefficient!(m, coef, constr, blk, i, j)
 end
-function SOI.setobjectivecoefficient!(m::DSDPSolverInstance, coef, blk::Integer, i::Integer, j::Integer)
-    # in SOI, convention is MAX but in DSDP, convention is MIN so we reverse the sign of coef
+function SDOI.setobjectivecoefficient!(m::DSDPSolverInstance, coef, blk::Integer, i::Integer, j::Integer)
+    # in SDOI, convention is MAX but in DSDP, convention is MIN so we reverse the sign of coef
     _setcoefficient!(m, -coef, 0, blk, i, j)
 end
 
@@ -271,10 +264,10 @@ function MOI.get(m::DSDPSolverInstance, ::MOI.DualStatus)
     end
 end
 
-function SOI.getprimalobjectivevalue(m::DSDPSolverInstance)
+function SDOI.getprimalobjectivevalue(m::DSDPSolverInstance)
     -GetPPObjective(m.dsdp)
 end
-function SOI.getdualobjectivevalue(m::DSDPSolverInstance)
+function SDOI.getdualobjectivevalue(m::DSDPSolverInstance)
     -GetDDObjective(m.dsdp)
 end
 
@@ -304,15 +297,15 @@ function Base.getindex(x::XBlockMat, i)
     @assert x.instance.blkdims[i] < 0
     LPXBlock(x.instance.lpcone, x.instance.blk[i])
 end
-function SOI.getX(m::DSDPSolverInstance)
+function SDOI.getX(m::DSDPSolverInstance)
     XBlockMat(m)
 end
 
-function SOI.gety(m::DSDPSolverInstance)
+function SDOI.gety(m::DSDPSolverInstance)
     if !m.y_valid
         m.y = Vector{Cdouble}(m.nconstrs)
         GetY(m.dsdp, m.y)
-        map!(-, m.y, m.y) # The primal objective is Max in SOI but Min in DSDP
+        map!(-, m.y, m.y) # The primal objective is Max in SDOI but Min in DSDP
     end
     m.y
 end
@@ -342,6 +335,6 @@ function Base.getindex(z::ZBlockMat, i)
     @assert z.instance.blkdims[i] < 0
     LPZBlock(z.instance.lpcone, z.instance.blk[i])
 end
-function SOI.getZ(m::DSDPSolverInstance)
+function SDOI.getZ(m::DSDPSolverInstance)
     ZBlockMat(m)
 end

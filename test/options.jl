@@ -5,12 +5,11 @@ using SemidefiniteOptInterface
 const SOI = SemidefiniteOptInterface
 
 @testset "Options" begin
-    solver = DSDPSolver()
-    instance = SOI.SDSolverInstance(solver)
+    instance = DSDP.DSDPSolverInstance()
     SOI.initinstance!(instance, [1], 42)
     for (option, default) in Iterators.flatten((DSDP.options, DSDP.gettable_options))
         @eval begin
-            @test MOI.get($solver, DSDP.$option()) == MOI.get($instance, DSDP.$option()) == $default
+            @test MOI.get($instance, DSDP.$option()) == $default
         end
     end
 end
