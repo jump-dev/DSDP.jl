@@ -85,7 +85,7 @@ function maxcut(nnodes, edges)
     DSDP.SetPNormTolerance(dsdp, 1.0)
     #info = TCheckArgs(dsdp,argc,argv)
 
-    DSDP.SetStandardMonitor(dsdp,1)
+    DSDP.SetStandardMonitor(dsdp,0)
 
     DSDP.Setup(dsdp)
 

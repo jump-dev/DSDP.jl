@@ -1,14 +1,11 @@
+using MathOptInterfaceTests
+const MOIT = MathOptInterfaceTests
+
+const solver = () -> DSDP.DSDPInstance()
+const config = MOIT.TestConfig(1e-6, 1e-6, true, true, true, true)
+
 @testset "Linear tests" begin
-    include(joinpath(Pkg.dir("MathOptInterface"), "test", "contlinear.jl"))
-    linear2test(DSDP.DSDPSolver(), atol=1e-7, rtol=1e-7)
-    linear3test(DSDP.DSDPSolver(), atol=1e-7, rtol=1e-7)
-    linear4test(DSDP.DSDPSolver(), atol=1e-7, rtol=1e-7)
-    linear5test(DSDP.DSDPSolver(), atol=1e-7, rtol=1e-7)
-    linear6test(DSDP.DSDPSolver(), atol=1e-6, rtol=1e-6)
-    linear7test(DSDP.DSDPSolver(), atol=1e-6, rtol=1e-6)
-    linear8test(DSDP.DSDPSolver(), atol=1e-7, rtol=1e-7)
-    linear9test(DSDP.DSDPSolver(), atol=1e-7, rtol=1e-7)
-    linear10test(DSDP.DSDPSolver(), atol=1e-7, rtol=1e-7)
+    MOIT.contlineartest(solver, config, ["linear1", "linear11", "linear12"])
 end
 #@testset "Conic tests" begin
 #    include(joinpath(Pkg.dir("MathOptInterface"), "test", "contconic.jl"))
