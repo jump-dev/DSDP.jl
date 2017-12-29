@@ -2,7 +2,7 @@ using MathOptInterfaceTests
 const MOIT = MathOptInterfaceTests
 
 const solver = () -> DSDP.DSDPInstance()
-const config = MOIT.TestConfig(1e-6, 1e-6, true, true, true)
+const config = MOIT.TestConfig(1e-6, 1e-6, true, true, true, true)
 
 @testset "Linear tests" begin
     MOIT.contlineartest(solver, config, ["linear1", "linear11", "linear12"])
