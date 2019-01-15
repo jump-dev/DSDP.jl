@@ -51,6 +51,6 @@ end
 #    @dsdp_ccall DSDPPrintSolution (Ptr{FILE}, DSDP, SDPCone.SDPConeT, LPCone.LPConeT) arg1 arg2 arg3 arg4
 #end
 
-include("DSDPSolverInterface.jl")
+include("MOI_wrapper.jl")
 
 end
