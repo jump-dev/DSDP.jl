@@ -4,9 +4,7 @@ SDOI = SemidefiniteOptInterface
 using MathOptInterface
 MOI = MathOptInterface
 
-export DSDPInstance
-
-mutable struct DSDPSolverInstance <: SDOI.AbstractSDSolverInstance
+mutable struct SDOptimizer <: SDOI.AbstractSDOptimizer
     dsdp::DSDPT
     lpcone::LPCone.LPConeT
     nconstrs::Int
@@ -24,16 +22,35 @@ mutable struct DSDPSolverInstance <: SDOI.AbstractSDSolverInstance
     z_computed::Bool
 
     options::Dict{Symbol,Any}
-    function DSDPSolverInstance(; kwargs...)
-        m = new(C_NULL, C_NULL, 0, Int[], Int[], C_NULL, 0, Int[], Int[], Cdouble[],
-            true, true, Cdouble[], true, Dict{Symbol, Any}(kwargs))
-        finalizer(m, _free)
-        m
+    function SDOptimizer(; kwargs...)
+        optimizer = new(C_NULL, C_NULL, 0, Int[], Int[], C_NULL, 0, Int[],
+                        Int[], Cdouble[], true, true, Cdouble[], true,
+                        Dict{Symbol, Any}(kwargs))
+        finalizer(_free, optimizer)
+        return optimizer
     end
 end
-DSDPInstance(; kws...) = SDOI.SDOIInstance(DSDPSolverInstance(; kws...))
+Optimizer(; kws...) = SDOI.SDOIOptimizer(SDOptimizer(; kws...))
 
-function _free(m::DSDPSolverInstance)
+MOI.get(::SDOptimizer, ::MOI.SolverName) = "DSDP"
+
+function MOI.empty!(optimizer::SDOptimizer)
+    _free(optimizer)
+    optimizer.nconstrs = 0
+    optimizer.blkdims = Int[]
+    optimizer.blk = Int[]
+    optimizer.nlpdrows = 0
+    optimizer.lpdvars = Int[]
+    optimizer.lpdrows = Int[]
+    optimizer.lpcoefs = Cdouble[]
+
+    optimizer.x_computed = true
+    optimizer.y_valid = true
+    optimizer.y = Cdouble[]
+    optimizer.z_computed = true
+end
+
+function _free(m::SDOptimizer)
     if m.dsdp != C_NULL
         Destroy(m.dsdp)
         m.dsdp = C_NULL
@@ -73,18 +90,18 @@ const options = Dict(
 
 const options_setters = Dict{Symbol, Function}()
 
-abstract type Option <: MOI.AbstractInstanceAttribute end
+abstract type Option <: MOI.AbstractModelAttribute end
 abstract type GettableOption <: Option end
 
-MOI.canget(solver::DSDPSolverInstance, ::Option) = true
-function MOI.set!(m::DSDPSolverInstance, o::Option, val)
-    # Need to set it in the dictionary so that it is also used when initinstance! is called again
+MOI.supports(solver::SDOptimizer, ::Option) = true
+function MOI.set(m::SDOptimizer, o::Option, val)
+    # Need to set it in the dictionary so that it is also used when init! is called again
     _dict_set!(m.options, o, val)
     _call_set!(m.dsdp, o, val)
 end
 
-MOI.get(m::DSDPSolverInstance, o::Option) = _dict_get(m.options, o)
-function MOI.get(m::DSDPSolverInstance, o::GettableOption)
+MOI.get(m::SDOptimizer, o::Option) = _dict_get(m.options, o)
+function MOI.get(m::SDOptimizer, o::GettableOption)
     if m.dsdp == C_NULL
         _dict_get(m.options, o)
     else
@@ -128,7 +145,7 @@ for (param, default) in Iterators.flatten((options, gettable_options))
     end
 end
 
-function SDOI.initinstance!(m::DSDPSolverInstance, blkdims::Vector{Int}, nconstrs::Int)
+function SDOI.init!(m::SDOptimizer, blkdims::Vector{Int}, nconstrs::Int)
     _free(m)
     @assert nconstrs >= 0
     m.nconstrs = nconstrs
@@ -169,10 +186,10 @@ function SDOI.initinstance!(m::DSDPSolverInstance, blkdims::Vector{Int}, nconstr
     m.z_computed = false
 end
 
-function SDOI.setconstraintconstant!(m::DSDPSolverInstance, val, constr::Integer)
+function SDOI.setconstraintconstant!(m::SDOptimizer, val, constr::Integer)
     SetDualObjective(m.dsdp, constr, val)
 end
-function _setcoefficient!(m::DSDPSolverInstance, coef, constr::Integer, blk::Integer, i::Integer, j::Integer)
+function _setcoefficient!(m::SDOptimizer, coef, constr::Integer, blk::Integer, i::Integer, j::Integer)
     if m.blkdims[blk] < 0
         @assert i == j
         push!(m.lpdvars, constr+1)
@@ -182,15 +199,15 @@ function _setcoefficient!(m::DSDPSolverInstance, coef, constr::Integer, blk::Int
         error("TODO")
     end
 end
-function SDOI.setconstraintcoefficient!(m::DSDPSolverInstance, coef, constr::Integer, blk::Integer, i::Integer, j::Integer)
+function SDOI.setconstraintcoefficient!(m::SDOptimizer, coef, constr::Integer, blk::Integer, i::Integer, j::Integer)
     _setcoefficient!(m, coef, constr, blk, i, j)
 end
-function SDOI.setobjectivecoefficient!(m::DSDPSolverInstance, coef, blk::Integer, i::Integer, j::Integer)
+function SDOI.setobjectivecoefficient!(m::SDOptimizer, coef, blk::Integer, i::Integer, j::Integer)
     # in SDOI, convention is MAX but in DSDP, convention is MIN so we reverse the sign of coef
     _setcoefficient!(m, -coef, 0, blk, i, j)
 end
 
-function MOI.optimize!(m::DSDPSolverInstance)
+function MOI.optimize!(m::SDOptimizer)
     if !isempty(m.lpdvars)
         m.lpcone = CreateLPCone(m.dsdp)
         LPCone.SetDataSparse(m.lpcone, m.nlpdrows, m.nconstrs+1, m.lpdvars, m.lpdrows, m.lpcoefs)
@@ -203,138 +220,172 @@ function MOI.optimize!(m::DSDPSolverInstance)
     # m.y does not contain the solution y
     m.y_valid = false
     m.z_computed = true
+
+    # It seems that calling this later causes segfaults, maybe it can be fixed
+    # with some `GC.@preserve` somewhere like in
+    # https://github.com/JuliaOpt/ECOS.jl/pull/63
+    # and
+    # https://github.com/JuliaOpt/SCS.jl/pull/91
+    compute_x(m)
+    compute_z(m)
 end
 
-function MOI.get(m::DSDPSolverInstance, ::MOI.TerminationStatus)
+function MOI.get(m::SDOptimizer, ::MOI.TerminationStatus)
+    if m.dsdp == C_NULL
+        return MOI.OPTIMIZE_NOT_CALLED
+    end
     status = StopReason(m.dsdp)
+    compute_x(m)
     if status == DSDP_CONVERGED
-        return MOI.Success
+        sol_status = GetSolutionType(m.dsdp)
+        if sol_status == DSDP_PDFEASIBLE
+            return MOI.OPTIMAL
+        elseif sol_status == DSDP_UNBOUNDED
+            return MOI.INFEASIBLE
+        elseif sol_status == DSDP_INFEASIBLE
+            return MOI.DUAL_INFEASIBLE
+        elseif sol_status == DSDP_PDUNKNOWN
+            return MOI.ALMOST_OPTIMAL
+        else
+            error("Internal library error: status=$sol_status")
+        end
     elseif status == DSDP_INFEASIBLE_START
-        return MOI.OtherError
+        return MOI.OTHER_ERROR
     elseif status == DSDP_SMALL_STEPS
-        return MOI.SlowProgress
+        return MOI.SLOW_PROGRESS
     elseif status == DSDP_INDEFINITE_SCHUR_MATRIX
-        return MOI.NumericalError
+        return MOI.NUMERICAL_ERROR
     elseif status == DSDP_MAX_IT
-        return MOI.IterationLimit
+        return MOI.ITERATION_LIMIT
     elseif status == DSDP_NUMERICAL_ERROR
-        return MOI.NumericalError
+        return MOI.NUMERICAL_ERROR
     elseif status == DSDP_UPPERBOUND
-        return MOI.ObjectiveLimit
+        return MOI.OBJECTIVE_LIMIT
     elseif status == DSDP_USER_TERMINATION
-        return MOI.Interrupted
+        return MOI.INTERRUPTED
     elseif status == CONTINUE_ITERATING
-        return MOI.OtherError
+        return MOI.OTHER_ERROR
     else
         error("Internal library error: status=$status")
     end
 end
 
-MOI.canget(m::DSDPSolverInstance, ::MOI.PrimalStatus) = GetSolutionType(m.dsdp) != DSDP_PDUNKNOWN
-function MOI.get(m::DSDPSolverInstance, ::MOI.PrimalStatus)
+function MOI.get(m::SDOptimizer, ::MOI.PrimalStatus)
+    if m.dsdp == C_NULL
+        return MOI.NO_SOLUTION
+    end
     compute_x(m)
     status = GetSolutionType(m.dsdp)
     if status == DSDP_PDUNKNOWN
-        return MOI.UnknownResultStatus
+        return MOI.UNKNOWN_RESULT_STATUS
     elseif status == DSDP_PDFEASIBLE
-        return MOI.FeasiblePoint
+        return MOI.FEASIBLE_POINT
     elseif status == DSDP_UNBOUNDED
-        return MOI.InfeasiblePoint
+        return MOI.INFEASIBLE_POINT
     elseif status == DSDP_INFEASIBLE
-        return MOI.InfeasibilityCertificate
+        return MOI.INFEASIBILITY_CERTIFICATE
     else
         error("Internal library error: status=$status")
     end
 end
 
-MOI.canget(m::DSDPSolverInstance, ::MOI.DualStatus) = GetSolutionType(m.dsdp) != DSDP_PDUNKNOWN
-function MOI.get(m::DSDPSolverInstance, ::MOI.DualStatus)
+function MOI.get(m::SDOptimizer, ::MOI.DualStatus)
+    if m.dsdp == C_NULL
+        return MOI.NO_SOLUTION
+    end
     compute_x(m)
     status = GetSolutionType(m.dsdp)
     if status == DSDP_PDUNKNOWN
-        return MOI.UnknownResultStatus
+        return MOI.UNKNOWN_RESULT_STATUS
     elseif status == DSDP_PDFEASIBLE
-        return MOI.FeasiblePoint
+        return MOI.FEASIBLE_POINT
     elseif status == DSDP_UNBOUNDED
-        return MOI.InfeasibilityCertificate
+        return MOI.INFEASIBILITY_CERTIFICATE
     elseif status == DSDP_INFEASIBLE
-        return MOI.InfeasiblePoint
+        return MOI.INFEASIBLE_POINT
     else
         error("Internal library error: status=$status")
     end
 end
 
-function SDOI.getprimalobjectivevalue(m::DSDPSolverInstance)
+function SDOI.getprimalobjectivevalue(m::SDOptimizer)
     -GetPPObjective(m.dsdp)
 end
-function SDOI.getdualobjectivevalue(m::DSDPSolverInstance)
+function SDOI.getdualobjectivevalue(m::SDOptimizer)
     -GetDDObjective(m.dsdp)
 end
 
-function compute_x(m::DSDPSolverInstance)
+abstract type LPBlock <: AbstractMatrix{Cdouble} end
+Base.size(x::LPBlock) = (x.dim, x.dim)
+function Base.getindex(x::LPBlock, i, j)
+    if i == j
+        return get_array(x)[x.offset + i]
+    else
+        return zero(Cdouble)
+    end
+end
+
+
+abstract type BlockMat <: SDOI.AbstractBlockMatrix{Cdouble} end
+SDOI.nblocks(x::BlockMat) = length(x.optimizer.blk)
+
+function compute_x(m::SDOptimizer)
     if !m.x_computed
+        @assert m.dsdp != C_NULL
         ComputeX(m.dsdp)
         m.x_computed = true
         m.z_computed = false
     end
 end
-struct LPXBlock <: AbstractMatrix{Cdouble}
+struct LPXBlock <: LPBlock
     lpcone::LPCone.LPConeT
+    dim::Int
     offset::Int
 end
-function Base.getindex(x::LPXBlock, i, j)
-    if i == j
-        LPCone.GetXArray(x.lpcone)[x.offset+i]
-    else
-        zero(Cdouble)
-    end
+get_array(x::LPXBlock) = LPCone.GetXArray(x.lpcone)
+struct XBlockMat <: BlockMat
+    optimizer::SDOptimizer
 end
-struct XBlockMat <: AbstractMatrix{Cdouble}
-    instance::DSDPSolverInstance
+function SDOI.block(x::XBlockMat, i)
+    compute_x(x.optimizer)
+    @assert x.optimizer.blkdims[i] < 0
+    LPXBlock(x.optimizer.lpcone, abs(x.optimizer.blkdims[i]), x.optimizer.blk[i])
 end
-function Base.getindex(x::XBlockMat, i)
-    compute_x(x.instance)
-    @assert x.instance.blkdims[i] < 0
-    LPXBlock(x.instance.lpcone, x.instance.blk[i])
-end
-function SDOI.getX(m::DSDPSolverInstance)
-    XBlockMat(m)
+function SDOI.getX(optimizer::SDOptimizer)
+    XBlockMat(optimizer)
 end
 
-function SDOI.gety(m::DSDPSolverInstance)
+function SDOI.gety(m::SDOptimizer)
     if !m.y_valid
-        m.y = Vector{Cdouble}(m.nconstrs)
+        m.y = Vector{Cdouble}(undef, m.nconstrs)
         GetY(m.dsdp, m.y)
         map!(-, m.y, m.y) # The primal objective is Max in SDOI but Min in DSDP
     end
     m.y
 end
 
-function compute_z(m::DSDPSolverInstance)
+function compute_z(m::SDOptimizer)
     if !m.z_computed
-        ComputeAndFactorS(m.dsdp)
+        GC.@preserve m begin
+            ComputeAndFactorS(m.dsdp)
+        end
         m.z_computed = true
     end
 end
-struct LPZBlock <: AbstractMatrix{Cdouble}
+struct LPZBlock <: LPBlock
     lpcone::LPCone.LPConeT
+    dim::Int
     offset::Int
 end
-function Base.getindex(z::LPZBlock, i, j)
-    if i == j
-        LPCone.GetSArray(z.lpcone)[z.offset+i]
-    else
-        zero(Cdouble)
-    end
+get_array(z::LPZBlock) = LPCone.GetSArray(z.lpcone)
+struct ZBlockMat <: BlockMat
+    optimizer::SDOptimizer
 end
-struct ZBlockMat <: AbstractMatrix{Cdouble}
-    instance::DSDPSolverInstance
+function SDOI.block(z::ZBlockMat, i)
+    compute_z(z.optimizer)
+    @assert z.optimizer.blkdims[i] < 0
+    LPZBlock(z.optimizer.lpcone, abs(z.optimizer.blkdims[i]), z.optimizer.blk[i])
 end
-function Base.getindex(z::ZBlockMat, i)
-    compute_z(z.instance)
-    @assert z.instance.blkdims[i] < 0
-    LPZBlock(z.instance.lpcone, z.instance.blk[i])
-end
-function SDOI.getZ(m::DSDPSolverInstance)
-    ZBlockMat(m)
+function SDOI.getZ(m::SDOptimizer)
+    return ZBlockMat(m)
 end

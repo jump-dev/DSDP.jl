@@ -26,8 +26,10 @@ end
 
 function ComputeAndFactorS(dsdp::DSDPT)
     psdefinite = Ref{DSDPTruth}()
-    @dsdp_ccall DSDPComputeAndFactorS (DSDPT, Ref{DSDPTruth}) dsdp psdefinite
-    psdefinite[]
+    GC.@preserve psdefinite dsdp begin
+        @dsdp_ccall DSDPComputeAndFactorS (DSDPT, Ref{DSDPTruth}) dsdp psdefinite
+        return psdefinite[]
+    end
 end
 
 function Destroy(dsdp::DSDPT)

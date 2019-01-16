@@ -1,6 +1,7 @@
 module DSDP
+using Libdl
 
-if isfile(joinpath(Pkg.dir("DSDP"),"deps","deps.jl"))
+if isfile(joinpath(dirname(@__FILE__), "..", "deps", "deps.jl"))
     include("../deps/deps.jl")
 else
     error("DSDP not properly installed. Please run Pkg.build(\"DSDP\")")
@@ -17,7 +18,7 @@ macro dsdp_ccall(f, args...)
     end
 end
 
-const DSDPT = Ptr{Void}
+const DSDPT = Ptr{Nothing}
 
 include("dsdp5_enums.jl")
 include("dsdp5_API.jl")

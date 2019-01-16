@@ -3,7 +3,7 @@ export BCone
 module BCone
 
 import ..@dsdp_ccall
-const BConeT = Ptr{Void}
+const BConeT = Ptr{Nothing}
 
 function AllocateBounds(bcone::BConeT, arg2::Integer)
     @dsdp_ccall BConeAllocateBounds (BConeT, Cint) bcone arg2

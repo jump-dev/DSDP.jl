@@ -10,9 +10,9 @@ signz(t) = t < 0 ? -1 : 1
 function MaxCutRandomized(sdpcone::SDPCone.SDPConeT, nnodes::Integer)
     ymin = Cdouble(0)
 
-    vv = Vector{Cdouble}(nnodes)
-    tt = Vector{Cdouble}(nnodes)
-    cc = Vector{Cdouble}(nnodes + 2)
+    vv = Vector{Cdouble}(undef, nnodes)
+    tt = Vector{Cdouble}(undef, nnodes)
+    cc = Vector{Cdouble}(undef, nnodes + 2)
     SDPCone.ComputeXV(sdpcone, 0)
     for i in 1:nnodes
         for j in eachindex(vv)
@@ -56,7 +56,7 @@ function maxcut(nnodes, edges)
     yy = zeros(nnodes)
     indd = zeros(Cint, nnodes + nedges)
     val = zeros(nnodes+nedges)
-    indd[nedges+(1:nnodes)] = iptr
+    indd[nedges .+ (1:nnodes)] = iptr
     tval = 0.0
     for (i, (u, v, w)) in enumerate(edges)
         indd[i] = di(u, v)
@@ -106,14 +106,14 @@ function maxcut(nnodes, edges)
 end
 
 @testset "DSDP MaxCut example" begin
-    const nnodes = 6
-    const edges = [(1, 2,   .3)
-                   (1, 4,  2.7)
-                   (1, 6,  1.5)
-                   (2, 3, -1.0)
-                   (2, 5,  1.45)
-                   (3, 4, -0.2)
-                   (4, 5,  1.2)
-                   (5, 6,  2.1)]
+    nnodes = 6
+    edges = [(1, 2,   .3)
+             (1, 4,  2.7)
+             (1, 6,  1.5)
+             (2, 3, -1.0)
+             (2, 5,  1.45)
+             (3, 4, -0.2)
+             (4, 5,  1.2)
+             (5, 6,  2.1)]
     maxcut(nnodes, edges)
 end

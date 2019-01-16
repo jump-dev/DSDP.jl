@@ -1,8 +1,8 @@
-using BinDeps
+using Libdl, BinDeps
 
 @BinDeps.setup
 
-@static if is_unix()
+@static if Sys.isunix()
     libdsdp = library_dependency("libdsdp", aliases=["libdsdp.a", "libdsdp.so", "libdsdp.dylib"])
 end
 
@@ -12,7 +12,7 @@ provides(Sources, URI("http://www.mcs.anl.gov/hs/software/DSDP/$DSDPname.tar.gz"
     [libdsdp], os = :Unix, unpacked_dir="$DSDPname")
 
 patchdir=BinDeps.depsdir(libdsdp)
-srcdir = joinpath(patchdir,"src",DSDPname) 
+srcdir = joinpath(patchdir,"src",DSDPname)
 libdir = joinpath(srcdir,"lib")
 usrdir = BinDeps.usrdir(libdsdp)
 
@@ -29,7 +29,7 @@ provides(SimpleBuild,
             pipeline(`patch -N -p0`, stdin="$patchdir/g2c_2.patch")
             pipeline(`patch -N -p0`, stdin="$patchdir/shared.patch")
             pipeline(`patch -N -p0`, stdin="$patchdir/rm.patch")
-            @static if is_apple()
+            @static if Sys.isapple()
                 pipeline(`patch -N -p0`, stdin="$patchdir/apple.patch")
             end
             `make`
