@@ -44,10 +44,10 @@ function MOI.empty!(optimizer::SDOptimizer)
     optimizer.lpdrows = Int[]
     optimizer.lpcoefs = Cdouble[]
 
-    optimizer.x_computed = true
+    optimizer.x_computed = false
     optimizer.y_valid = true
     optimizer.y = Cdouble[]
-    optimizer.z_computed = true
+    optimizer.z_computed = false
 end
 
 function _free(m::SDOptimizer)
