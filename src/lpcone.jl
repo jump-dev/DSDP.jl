@@ -3,7 +3,7 @@ export LPCone
 module LPCone
 
 import ..@dsdp_ccall
-const LPConeT = Ptr{Void}
+const LPConeT = Ptr{Nothing}
 
 function buildlp(nvars, lpdvars, lpdrows, lpcoefs)
     @assert length(lpdvars) == length(lpdrows) == length(lpcoefs)
@@ -12,14 +12,14 @@ function buildlp(nvars, lpdvars, lpdrows, lpcoefs)
     for var in lpdvars
         nzin[var] += 1
     end
-    nnzin = [zero(Cint); cumsum(nzin)]
+    nnzin = Cint[zero(Cint); cumsum(nzin)]
     @assert nnzin[end] == n
     idx = map(var -> Int[], 1:nvars)
     for (i, var) in enumerate(lpdvars)
         push!(idx[var], i)
     end
-    row = Vector{Cint}(n)
-    aval = Vector{Cdouble}(n)
+    row = Vector{Cint}(undef, n)
+    aval = Vector{Cdouble}(undef, n)
     for var in 1:nvars
         sort!(idx[var], by=i->lpdrows[i])
         row[(nnzin[var]+1):(nnzin[var+1])] = lpdrows[idx[var]]
@@ -64,8 +64,10 @@ function GetSArray(lpcone::LPConeT)
     unsafe_wrap(Array, sout[], n[])
 end
 
-function GetDimension(arg1::LPConeT, arg2)
-    @dsdp_ccall LPConeGetDimension (LPConeT, Ptr{Cint}) arg1 arg2
+function GetDimension(arg1::LPConeT)
+    dim = Ref{Cint}()
+    @dsdp_ccall LPConeGetDimension (LPConeT, Ref{Cint}) arg1 dim
+    return dim[]
 end
 
 function View(lpcone::LPConeT)

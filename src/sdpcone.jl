@@ -3,7 +3,7 @@ export SDPCone
 module SDPCone
 
 import ..@dsdp_ccall
-const SDPConeT = Ptr{Void}
+const SDPConeT = Ptr{Nothing}
 
 function SetBlockSize(sdpcone::SDPConeT, i::Integer, j::Integer)
     @dsdp_ccall SDPConeSetBlockSize (SDPConeT, Cint, Cint) sdpcone i j

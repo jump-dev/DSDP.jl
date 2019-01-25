@@ -1,7 +1,7 @@
 using DSDP
-using Base.Test
+using Test
 
 include("maxcut.jl")
 include("build.jl")
 include("options.jl")
-include("moi.jl")
+include("MOI_wrapper.jl")
