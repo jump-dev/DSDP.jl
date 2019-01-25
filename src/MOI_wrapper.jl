@@ -245,7 +245,7 @@ function MOI.get(m::SDOptimizer, ::MOI.TerminationStatus)
         elseif sol_status == DSDP_INFEASIBLE
             return MOI.DUAL_INFEASIBLE
         elseif sol_status == DSDP_PDUNKNOWN
-            return MOI.ALMOST_OPTIMAL
+            return MOI.OTHER_ERROR
         else
             error("Internal library error: status=$sol_status")
         end
