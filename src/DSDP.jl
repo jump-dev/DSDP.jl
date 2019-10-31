@@ -1,5 +1,5 @@
 module DSDP
-using Libdl
+using Libdl, LinearAlgebra
 
 if isfile(joinpath(dirname(@__FILE__), "..", "deps", "deps.jl"))
     include("../deps/deps.jl")
