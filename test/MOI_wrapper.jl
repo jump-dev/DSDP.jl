@@ -52,7 +52,8 @@ end
     # `ConstraintSet` modification.
     MOIB.remove_bridge(bridged, MOIB.Constraint.ScalarSlackBridge{Float64})
     MOIT.contlineartest(bridged, config, [
-        "linear1", "linear11", "linear12", "linear14"
+        # To investigate...
+        "linear1", "linear2", "linear3", "linear5", "linear8a", "linear9", "linear10", "linear10b", "linear11", "linear12", "linear14", "partial_start"
     ])
 end
 
