@@ -20,7 +20,7 @@ end
 const cache = MOIU.UniversalFallback(MOIU.Model{Float64}())
 const cached = MOIU.CachingOptimizer(cache, optimizer)
 const bridged = MOIB.full_bridge_optimizer(cached, Float64)
-const config = MOIT.TestConfig(atol=1e-6, rtol=1e-6)
+const config = MOIT.TestConfig(atol=1e-2, rtol=1e-2)
 
 @testset "Unit" begin
     MOIT.unittest(bridged, config, [
@@ -29,10 +29,13 @@ const config = MOIT.TestConfig(atol=1e-6, rtol=1e-6)
         "solve_blank_obj", "solve_affine_interval",
         "solve_singlevariable_obj", "solve_constant_obj",
         "solve_affine_deletion_edge_cases",
+        "solve_with_upperbound",
         # `NumberOfThreads` not supported.
         "number_threads",
         # `TimeLimitSec` not supported.
         "time_limit_sec",
+        # `SolveTime` not supported.
+        "solve_time",
         # Quadratic functions are not supported
         "solve_qcp_edge_cases", "solve_qp_edge_cases",
         # Integer and ZeroOne sets are not supported
