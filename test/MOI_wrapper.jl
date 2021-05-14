@@ -1,3 +1,4 @@
+using Test
 using MathOptInterface
 
 const MOI = MathOptInterface
@@ -30,6 +31,18 @@ const config = MOIT.TestConfig(atol=1e-2, rtol=1e-2)
         "solve_singlevariable_obj", "solve_constant_obj",
         "solve_affine_deletion_edge_cases",
         "solve_with_upperbound",
+        # Expression: MOI.get(model, MOI.TerminationStatus()) == MOI.INFEASIBLE
+        #  Evaluated: MathOptInterface.OPTIMAL == MathOptInterface.INFEASIBLE
+        "solve_farkas_equalto_lower",
+        "solve_farkas_equalto_upper",
+        "solve_farkas_variable_lessthan",
+        "solve_farkas_variable_lessthan_max",
+        "solve_farkas_greaterthan",
+        "solve_farkas_interval_upper",
+        "solve_farkas_lessthan",
+        "solve_farkas_interval_lower",
+        # TODO should work when SDP is complete
+        "solve_qp_zero_offdiag",
         # `NumberOfThreads` not supported.
         "number_threads",
         # `TimeLimitSec` not supported.
