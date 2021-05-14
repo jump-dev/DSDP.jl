@@ -23,12 +23,14 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
     y::Vector{Cdouble}
     z_computed::Bool
 
+    is_setup::Bool
+
     silent::Bool
     options::Dict{Symbol,Any}
     function Optimizer(; kwargs...)
         optimizer = new(C_NULL, C_NULL, 0.0, 1, Cdouble[], Int[], Tuple{Int, Int, Int}[], Int[], C_NULL, 0, Int[],
                         Int[], Cdouble[], true, true, Cdouble[], true,
-                        false, Dict{Symbol, Any}())
+                        false, false, Dict{Symbol, Any}())
 		for (key, value) in kwargs
 			MOI.set(optimizer, MOI.RawParameter(key), value)
 		end
@@ -64,6 +66,7 @@ function MOI.empty!(optimizer::Optimizer)
     optimizer.y_valid = true
     empty!(optimizer.y)
     optimizer.z_computed = false
+    optimizer.is_setup = false
 end
 
 function MOI.is_empty(optimizer::Optimizer)
@@ -181,16 +184,9 @@ function MOI.supports(
     return true
 end
 
-function MOI.supports_constraint(
-    ::Optimizer, ::Type{MOI.VectorOfVariables}, ::Type{MOI.Reals})
-    return false
-end
+MOI.supports_add_constrained_variables(::Optimizer, ::Type{MOI.Reals}) = false
 const SupportedSets = Union{MOI.Nonnegatives, MOI.PositiveSemidefiniteConeTriangle}
-function MOI.supports_constraint(
-    ::Optimizer, ::Type{MOI.VectorOfVariables},
-    ::Type{<:SupportedSets})
-    return true
-end
+MOI.supports_add_constrained_variables(::Optimizer, ::Type{<:SupportedSets}) = true
 function MOI.supports_constraint(
     ::Optimizer, ::Type{MOI.ScalarAffineFunction{Cdouble}},
     ::Type{MOI.EqualTo{Cdouble}})
@@ -339,12 +335,18 @@ end
 
 
 function MOI.optimize!(m::Optimizer)
-    if !isempty(m.lpdvars)
-        m.lpcone = CreateLPCone(m.dsdp)
-        LPCone.SetDataSparse(m.lpcone, m.nlpdrows, length(m.b) + 1, m.lpdvars, m.lpdrows, m.lpcoefs)
+    # TODO in MOI v0.10, remove the `is_setup` flag
+    #      and do this in `MOI.Utilities.final_touch`.
+    if !m.is_setup
+        if !isempty(m.lpdvars)
+            m.lpcone = CreateLPCone(m.dsdp)
+            LPCone.SetDataSparse(m.lpcone, m.nlpdrows, length(m.b) + 1, m.lpdvars, m.lpdrows, m.lpcoefs)
+        end
+
+        Setup(m.dsdp)
+        m.is_setup = true
     end
 
-    Setup(m.dsdp)
     Solve(m.dsdp)
 
     m.x_computed = false
