@@ -2,7 +2,7 @@ using Test
 using MathOptInterface
 
 const MOI = MathOptInterface
-const MOIT = MOI.Test
+const MOIT = MOI.DeprecatedTest
 const MOIU = MOI.Utilities
 const MOIB = MOI.Bridges
 
@@ -21,7 +21,7 @@ end
 const cache = MOIU.UniversalFallback(MOIU.Model{Float64}())
 const cached = MOIU.CachingOptimizer(cache, optimizer)
 const bridged = MOIB.full_bridge_optimizer(cached, Float64)
-const config = MOIT.TestConfig(atol=1e-2, rtol=1e-2)
+const config = MOIT.Config(atol=1e-2, rtol=1e-2)
 
 @testset "Unit" begin
     MOIT.unittest(bridged, config, [

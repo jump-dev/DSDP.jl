@@ -32,7 +32,7 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
                         Int[], Cdouble[], true, true, Cdouble[], true,
                         false, false, Dict{Symbol, Any}())
 		for (key, value) in kwargs
-			MOI.set(optimizer, MOI.RawParameter(key), value)
+			MOI.set(optimizer, MOI.RawOptimizerAttribute(key), value)
 		end
         finalizer(_free, optimizer)
         return optimizer
