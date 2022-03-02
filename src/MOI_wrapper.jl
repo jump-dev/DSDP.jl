@@ -1,13 +1,15 @@
 using MathOptInterface
 const MOI = MathOptInterface
 const MOIU = MOI.Utilities
-const AFFEQ = MOI.ConstraintIndex{MOI.ScalarAffineFunction{Cdouble}, MOI.EqualTo{Cdouble}}
+const AFF = MOI.ScalarAffineFunction{Cdouble}
+const EQ = MOI.EqualTo{Cdouble}
+const AFFEQ = MOI.ConstraintIndex{AFF,EQ}
 
 mutable struct Optimizer <: MOI.AbstractOptimizer
     dsdp::DSDPT
     lpcone::LPCone.LPConeT
-    objconstant::Cdouble
-    objsign::Int
+    objective_constant::Cdouble
+    objective_sign::Int
     b::Vector{Cdouble}
     blockdims::Vector{Int}
     varmap::Vector{Tuple{Int, Int, Int}} # Variable Index vi -> blk, i, j
@@ -51,8 +53,8 @@ MOI.get(::Optimizer, ::MOI.SolverName) = "DSDP"
 
 function MOI.empty!(optimizer::Optimizer)
     _free(optimizer)
-    optimizer.objconstant = 0
-    optimizer.objsign = 1
+    optimizer.objective_constant = 0
+    optimizer.objective_sign = 1
     empty!(optimizer.b)
     empty!(optimizer.blockdims)
     empty!(optimizer.varmap)
@@ -70,8 +72,8 @@ function MOI.empty!(optimizer::Optimizer)
 end
 
 function MOI.is_empty(optimizer::Optimizer)
-    return iszero(optimizer.objconstant) &&
-        isone(optimizer.objsign) &&
+    return iszero(optimizer.objective_constant) &&
+        isone(optimizer.objective_sign) &&
         isempty(optimizer.b) &&
         isempty(optimizer.blockdims) &&
         isempty(optimizer.varmap) &&
@@ -193,37 +195,6 @@ function MOI.supports_constraint(
     return true
 end
 
-function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike; kws...)
-    return MOIU.automatic_copy_to(dest, src; kws...)
-end
-MOIU.supports_allocate_load(::Optimizer, copy_names::Bool) = !copy_names
-
-function MOIU.allocate(optimizer::Optimizer, ::MOI.ObjectiveSense, sense::MOI.OptimizationSense)
-    # DSDP convention is MIN so we reverse the sign of coef if it is MAX
-    optimizer.objsign = sense == MOI.MIN_SENSE ? 1 : -1
-end
-function MOIU.allocate(::Optimizer, ::MOI.ObjectiveFunction, ::MOI.ScalarAffineFunction) end
-
-function MOIU.load(::Optimizer, ::MOI.ObjectiveSense, ::MOI.OptimizationSense) end
-# Loads objective coefficient α * vi
-function load_objective_term!(optimizer::Optimizer, α, vi::MOI.VariableIndex)
-    blk, i, j = varmap(optimizer, vi)
-    coef = optimizer.objsign * α
-    if i != j
-        coef /= 2
-    end
-    _setcoefficient!(optimizer, coef, 0, blk, i, j)
-end
-function MOIU.load(optimizer::Optimizer, ::MOI.ObjectiveFunction, f::MOI.ScalarAffineFunction)
-    obj = MOIU.canonical(f)
-    optimizer.objconstant = f.constant
-    for t in obj.terms
-        if !iszero(t.coefficient)
-            load_objective_term!(optimizer, t.coefficient, t.variable_index)
-        end
-    end
-end
-
 function new_block(optimizer::Optimizer, set::MOI.Nonnegatives)
     push!(optimizer.blockdims, -MOI.dimension(set))
     blk = length(optimizer.blockdims)
@@ -242,56 +213,50 @@ function new_block(optimizer::Optimizer, set::MOI.PositiveSemidefiniteConeTriang
     end
 end
 
-function MOIU.allocate_constrained_variables(optimizer::Optimizer,
-                                             set::SupportedSets)
+function _add_constrained_variables(optimizer::Optimizer, set::SupportedSets)
     offset = length(optimizer.varmap)
     new_block(optimizer, set)
     ci = MOI.ConstraintIndex{MOI.VectorOfVariables, typeof(set)}(offset + 1)
     return [MOI.VariableIndex(i) for i in offset .+ (1:MOI.dimension(set))], ci
 end
 
-function MOIU.load_constrained_variables(
-    optimizer::Optimizer, vis::Vector{MOI.VariableIndex},
-    ci::MOI.ConstraintIndex{MOI.VectorOfVariables},
-    set::SupportedSets)
+function _error(start, stop)
+    return error(
+        start,
+        ". Use `MOI.instantiate(CSDP.Optimizer, with_bridge_type = Float64)` ",
+        stop,
+    )
 end
 
-function MOIU.load_variables(m::Optimizer, nvars)
-    _free(m)
-    m.nlpdrows = 0
-    sdpidx = 0
-    m.blk = similar(m.blockdims)
-    for i in 1:length(m.blockdims)
-        if m.blockdims[i] < 0
-            m.blk[i] = m.nlpdrows
-            m.nlpdrows -= m.blockdims[i]
+# Copied from CSDP.jl
+function constrain_variables_on_creation(
+    dest::MOI.ModelLike,
+    src::MOI.ModelLike,
+    index_map::MOI.Utilities.IndexMap,
+    ::Type{S},
+) where {S<:SupportedSets}
+    for ci_src in
+        MOI.get(src, MOI.ListOfConstraintIndices{MOI.VectorOfVariables,S}())
+        f_src = MOI.get(src, MOI.ConstraintFunction(), ci_src)
+        if !allunique(f_src.variables)
+            _error(
+                "Cannot copy constraint `$(ci_src)` as variables constrained on creation because there are duplicate variables in the function `$(f_src)`",
+                "to bridge this by creating slack variables.",
+            )
+        elseif any(vi -> haskey(index_map, vi), f_src.variables)
+            _error(
+                "Cannot copy constraint `$(ci_src)` as variables constrained on creation because some variables of the function `$(f_src)` are in another constraint as well.",
+                "to bridge constraints having the same variables by creating slack variables.",
+            )
         else
-            sdpidx += 1
-            m.blk[i] = sdpidx
+            set = MOI.get(src, MOI.ConstraintSet(), ci_src)::S
+            vis_dest, ci_dest = _add_constrained_variables(dest, set)
+            index_map[ci_src] = ci_dest
+            for (vi_src, vi_dest) in zip(f_src.variables, vis_dest)
+                index_map[vi_src] = vi_dest
+            end
         end
     end
-    m.lpdvars = Int[]
-    m.lpdrows = Int[]
-    m.lpcoefs = Cdouble[]
-
-    m.dsdp = Create(length(m.b))
-    for (option, value) in m.options
-        options_setters[option](m.dsdp, value)
-    end
-
-    # TODO only create if necessary
-    m.sdpcone = CreateSDPCone(m.dsdp, length(m.blockdims))
-    for constr in eachindex(m.b)
-        # TODO in examples/readsdpa.c line 162,
-        # -0.0 is used instead of 0.0 if the dual obj is <= 0., check if it has impact
-        SetY0(m.dsdp, constr, 0.0)
-    end
-    # TODO ComputeY0 as in examples/readsdpa.c
-
-    m.x_computed = false
-    # m.y does not contain the solution y
-    m.y_valid = false
-    m.z_computed = false
 end
 
 function _setcoefficient!(m::Optimizer, coef, constr::Integer, blk::Integer, i::Integer, j::Integer)
@@ -305,34 +270,135 @@ function _setcoefficient!(m::Optimizer, coef, constr::Integer, blk::Integer, i::
     end
 end
 
-function MOIU.allocate_constraint(optimizer::Optimizer,
-                                  func::MOI.ScalarAffineFunction{Cdouble},
-                                  set::MOI.EqualTo{Cdouble})
-    push!(optimizer.b, MOI.constant(set))
-    return AFFEQ(length(optimizer.b))
+# Loads objective coefficient α * vi
+function load_objective_term!(optimizer::Optimizer, α, vi::MOI.VariableIndex)
+    blk, i, j = varmap(optimizer, vi)
+    coef = optimizer.objective_sign * α
+    if i != j
+        coef /= 2
+    end
+    _setcoefficient!(optimizer, coef, 0, blk, i, j)
 end
 
-function MOIU.load_constraint(m::Optimizer, ci::AFFEQ,
-                              f::MOI.ScalarAffineFunction, s::MOI.EqualTo)
-    if !iszero(MOI.constant(f))
-        throw(MOI.ScalarFunctionConstantNotZero{
-            Cdouble, MOI.ScalarAffineFunction{Cdouble}, MOI.EqualTo{Cdouble}}(
-                MOI.constant(f)))
+# Largely inspired from CSDP.jl
+function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
+    MOI.empty!(dest)
+    index_map = MOI.Utilities.IndexMap()
+
+    # Step 1) Compute the dimensions of what needs to be allocated
+    constrain_variables_on_creation(dest, src, index_map, MOI.Nonnegatives)
+    constrain_variables_on_creation(
+        dest,
+        src,
+        index_map,
+        MOI.PositiveSemidefiniteConeTriangle,
+    )
+    vis_src = MOI.get(src, MOI.ListOfVariableIndices())
+    if length(vis_src) < length(index_map.var_map)
+        _error(
+            "Free variables are not supported by DSDP",
+            "to bridge free variables into `x - y` where `x` and `y` are nonnegative.",
+        )
     end
-    SetDualObjective(m.dsdp, ci.value, MOI.constant(s))
-    f = MOIU.canonical(f) # sum terms with same variables and same outputindex
-    for t in f.terms
-        if !iszero(t.coefficient)
-            blk, i, j = varmap(m, t.variable_index)
-            coef = t.coefficient
-            if i != j
-                coef /= 2
-            end
-            _setcoefficient!(m, coef, ci.value, blk, i, j)
+    cis_src = MOI.get(src, MOI.ListOfConstraintIndices{AFF,EQ}())
+    dest.b = Vector{Cdouble}(undef, length(cis_src))
+
+    _free(dest)
+    dest.nlpdrows = 0
+    sdpidx = 0
+    dest.blk = similar(dest.blockdims)
+    for i in 1:length(dest.blockdims)
+        if dest.blockdims[i] < 0
+            dest.blk[i] = dest.nlpdrows
+            dest.nlpdrows -= dest.blockdims[i]
+        else
+            sdpidx += 1
+            dest.blk[i] = sdpidx
         end
     end
-end
+    dest.lpdvars = Int[]
+    dest.lpdrows = Int[]
+    dest.lpcoefs = Cdouble[]
 
+    dest.dsdp = Create(length(dest.b))
+    for (option, value) in dest.options
+        options_setters[option](dest.dsdp, value)
+    end
+
+    # TODO only create if necessary
+    dest.sdpcone = CreateSDPCone(dest.dsdp, length(dest.blockdims))
+    for constr in eachindex(dest.b)
+        # TODO in examples/readsdpa.c line 162,
+        # -0.0 is used instead of 0.0 if the dual obj is <= 0., check if it has impact
+        SetY0(dest.dsdp, constr, 0.0)
+    end
+    # TODO ComputeY0 as in examples/readsdpa.c
+
+    dest.x_computed = false
+    # dest.y does not contain the solution y
+    dest.y_valid = false
+    dest.z_computed = false
+
+    for (k, ci_src) in enumerate(cis_src)
+        func = MOI.get(src, MOI.CanonicalConstraintFunction(), ci_src)
+        set = MOI.get(src, MOI.ConstraintSet(), ci_src)
+        if !iszero(MOI.constant(func))
+            throw(
+                MOI.ScalarFunctionConstantNotZero{Cdouble,AFF,EQ}(
+                    MOI.constant(func),
+                ),
+            )
+        end
+        SetDualObjective(dest.dsdp, k, MOI.constant(set))
+        for t in func.terms
+            if !iszero(t.coefficient)
+                blk, i, j = varmap(dest, t.variable)
+                coef = t.coefficient
+                if i != j
+                    coef /= 2
+                end
+                _setcoefficient!(dest, coef, k, blk, i, j)
+            end
+        end
+        dest.b[k] = MOI.constant(set)
+        index_map[ci_src] = AFFEQ(k)
+    end
+
+    # Throw error for variable attributes
+    MOI.Utilities.pass_attributes(dest, src, index_map, vis_src)
+    # Throw error for constraint attributes
+    MOI.Utilities.pass_attributes(dest, src, index_map, cis_src)
+
+    # Pass objective attributes and throw error for other ones
+    model_attributes = MOI.get(src, MOI.ListOfModelAttributesSet())
+    for attr in model_attributes
+        if attr != MOI.ObjectiveSense() && attr != MOI.ObjectiveFunction{AFF}()
+            throw(MOI.UnsupportedAttribute(attr))
+        end
+    end
+    # We make sure to set `objective_sign` first before setting the objective
+    if MOI.ObjectiveSense() in model_attributes
+        # DSDP convention is MIN so we reverse the sign of coef if it is MAX
+        sense = MOI.get(src, MOI.ObjectiveSense())
+        dest.objective_sign = sense == MOI.MIN_SENSE ? 1 : -1
+    end
+    if MOI.ObjectiveFunction{AFF}() in model_attributes
+        func = MOI.get(src, MOI.ObjectiveFunction{AFF}())
+        obj = MOI.Utilities.canonical(func)
+        dest.objective_constant = obj.constant
+        for term in obj.terms
+            if !iszero(term.coefficient)
+                load_objective_term!(
+                    dest,
+                    term.coefficient,
+                    index_map[term.variable],
+                )
+            end
+        end
+    end
+
+    return index_map
+end
 
 function MOI.optimize!(m::Optimizer)
     # TODO in MOI v0.10, remove the `is_setup` flag
@@ -433,7 +499,7 @@ function MOI.get(m::Optimizer, ::MOI.TerminationStatus)
 end
 
 function MOI.get(m::Optimizer, attr::MOI.PrimalStatus)
-    if attr.N > MOI.get(m, MOI.ResultCount())
+    if attr.result_index > MOI.get(m, MOI.ResultCount())
         return MOI.NO_SOLUTION
     end
     compute_x(m)
@@ -452,7 +518,7 @@ function MOI.get(m::Optimizer, attr::MOI.PrimalStatus)
 end
 
 function MOI.get(m::Optimizer, attr::MOI.DualStatus)
-    if attr.N > MOI.get(m, MOI.ResultCount())
+    if attr.result_index > MOI.get(m, MOI.ResultCount())
         return MOI.NO_SOLUTION
     end
     compute_x(m)
@@ -473,11 +539,11 @@ end
 MOI.get(m::Optimizer, ::MOI.ResultCount) = m.dsdp == C_NULL ? 0 : 1
 function MOI.get(m::Optimizer, attr::MOI.ObjectiveValue)
     MOI.check_result_index_bounds(m, attr)
-    return m.objsign * GetPPObjective(m.dsdp) + m.objconstant
+    return m.objective_sign * GetPPObjective(m.dsdp) + m.objective_constant
 end
 function MOI.get(m::Optimizer, attr::MOI.DualObjectiveValue)
     MOI.check_result_index_bounds(m, attr)
-    return m.objsign * GetDDObjective(m.dsdp) + m.objconstant
+    return m.objective_sign * GetDDObjective(m.dsdp) + m.objective_constant
 end
 
 abstract type LPBlock <: AbstractMatrix{Cdouble} end

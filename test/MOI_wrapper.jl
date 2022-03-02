@@ -13,11 +13,6 @@ const optimizer = DSDP.Optimizer()
     @test MOI.get(optimizer, MOI.SolverName()) == "DSDP"
 end
 
-@testset "supports_default_copy_to" begin
-    @test MOIU.supports_allocate_load(optimizer, false)
-    @test !MOIU.supports_allocate_load(optimizer, true)
-end
-
 const cache = MOIU.UniversalFallback(MOIU.Model{Float64}())
 const cached = MOIU.CachingOptimizer(cache, optimizer)
 const bridged = MOIB.full_bridge_optimizer(cached, Float64)
@@ -43,6 +38,7 @@ const config = MOIT.Config(atol=1e-2, rtol=1e-2)
         "solve_farkas_interval_lower",
         # TODO should work when SDP is complete
         "solve_qp_zero_offdiag",
+        "solve_start_soc",
         # `NumberOfThreads` not supported.
         "number_threads",
         # `TimeLimitSec` not supported.
