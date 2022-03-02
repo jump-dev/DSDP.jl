@@ -3,7 +3,9 @@
 | **Build Status** |
 |:----------------:|
 | [![Build Status][build-img]][build-url] |
-| [![Coveralls branch][coveralls-img]][coveralls-url] [![Codecov branch][codecov-img]][codecov-url] |
+| [![Codecov branch][codecov-img]][codecov-url] |
+
+**Important note**: this is still a work on progress. The use of semidefinite matrices in linear equality constraints has not been implemented yet so only linear programs can be solved at the moment with DSDP.
 
 Julia wrapper for the [DSDP](http://www.mcs.anl.gov/hs/software/DSDP/) semidefinite programming solver.
 
@@ -25,9 +27,7 @@ $ sudo apt-get install build-essential liblapack-dev libopenblas-dev
 ### Windows
 Windows support is still a work in progress.
 
-[build-img]: https://travis-ci.org/joehuchette/DSDP.jl.svg?branch=master
-[build-url]: https://travis-ci.org/joehuchette/DSDP.jl
-[coveralls-img]: https://coveralls.io/repos/joehuchette/DSDP.jl/badge.svg?branch=master&service=github
-[coveralls-url]: https://coveralls.io/github/joehuchette/DSDP.jl?branch=master
-[codecov-img]: http://codecov.io/github/joehuchette/DSDP.jl/coverage.svg?branch=master
-[codecov-url]: http://codecov.io/github/joehuchette/DSDP.jl?branch=master
+[build-img]: https://github.com/jump-dev/DSDP.jl/workflows/CI/badge.svg?branch=master
+[build-url]: https://github.com/jump-dev/DSDP.jl/actions?query=workflow%3ACI
+[codecov-img]: http://codecov.io/github/jump-dev/DSDP.jl/coverage.svg?branch=master
+[codecov-url]: http://codecov.io/github/jump-dev/DSDP.jl?branch=master
