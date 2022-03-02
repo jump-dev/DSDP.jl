@@ -5,7 +5,7 @@
 | [![Build Status][build-img]][build-url] |
 | [![Codecov branch][codecov-img]][codecov-url] |
 
-**Important note**: this is still a work on progress. The use of semidefinite matrices in linear equality constraints has not been implemented yet so only linear programs can be solved at the moment with DSDP.
+**Important note**: this is still a work on progress. The use of positive semidefinite matrices in linear equality constraints has not been implemented yet so only linear programs can be solved at the moment with DSDP.
 
 Julia wrapper for the [DSDP](http://www.mcs.anl.gov/hs/software/DSDP/) semidefinite programming solver.
 

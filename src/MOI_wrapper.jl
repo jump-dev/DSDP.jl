@@ -188,7 +188,9 @@ end
 
 MOI.supports_add_constrained_variables(::Optimizer, ::Type{MOI.Reals}) = false
 const SupportedSets = Union{MOI.Nonnegatives, MOI.PositiveSemidefiniteConeTriangle}
-MOI.supports_add_constrained_variables(::Optimizer, ::Type{<:SupportedSets}) = true
+# TODO positive semidefinite matrix variables not supported yet in linear equality constraints
+#MOI.supports_add_constrained_variables(::Optimizer, ::Type{<:SupportedSets}) = true
+MOI.supports_add_constrained_variables(::Optimizer, ::Type{<:MOI.Nonnegatives}) = true
 function MOI.supports_constraint(
     ::Optimizer, ::Type{MOI.ScalarAffineFunction{Cdouble}},
     ::Type{MOI.EqualTo{Cdouble}})
@@ -266,12 +268,12 @@ function _setcoefficient!(m::Optimizer, coef, constr::Integer, blk::Integer, i::
         push!(m.lpdrows, m.blk[blk] + i - 1) # -1 because indexing starts at 0 in DSDP
         push!(m.lpcoefs, coef)
     else
-        error("Semidefinite matrix variables are not supported yet so only linear programs are supported at the moment.")
+        error("Positive semidefinite matrix variables are not supported yet so only linear programs are supported at the moment.")
     end
 end
 
 # Loads objective coefficient α * vi
-function load_objective_term!(optimizer::Optimizer, α, vi::MOI.VariableIndex)
+function load_objective_term!(optimizer::Optimizer, index_map, α, vi::MOI.VariableIndex)
     blk, i, j = varmap(optimizer, vi)
     coef = optimizer.objective_sign * α
     if i != j
@@ -301,6 +303,9 @@ function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
         )
     end
     cis_src = MOI.get(src, MOI.ListOfConstraintIndices{AFF,EQ}())
+    if isempty(cis_src)
+        throw(ArgumentError("DSDP does not support problems with no constraint."))
+    end
     dest.b = Vector{Cdouble}(undef, length(cis_src))
 
     _free(dest)
@@ -352,7 +357,7 @@ function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
         SetDualObjective(dest.dsdp, k, MOI.constant(set))
         for t in func.terms
             if !iszero(t.coefficient)
-                blk, i, j = varmap(dest, t.variable)
+                blk, i, j = varmap(dest, index_map[t.variable])
                 coef = t.coefficient
                 if i != j
                     coef /= 2
@@ -390,6 +395,7 @@ function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
             if !iszero(term.coefficient)
                 load_objective_term!(
                     dest,
+                    index_map,
                     term.coefficient,
                     index_map[term.variable],
                 )
