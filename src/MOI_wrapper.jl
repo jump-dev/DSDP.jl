@@ -266,7 +266,7 @@ function _setcoefficient!(m::Optimizer, coef, constr::Integer, blk::Integer, i::
         push!(m.lpdrows, m.blk[blk] + i - 1) # -1 because indexing starts at 0 in DSDP
         push!(m.lpcoefs, coef)
     else
-        error("TODO")
+        error("Semidefinite matrix variables are not supported yet so only linear programs are supported at the moment.")
     end
 end
 
