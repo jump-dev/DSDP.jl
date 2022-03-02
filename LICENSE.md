@@ -1,4 +1,4 @@
-The SumOfSquares.jl package is licensed under the MIT "Expat" License:
+The DSDP.jl package is licensed under the MIT "Expat" License:
 
 > Copyright (c) 2022: Joey Huchette, Benoît Legat, and contributors
 >
