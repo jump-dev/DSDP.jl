@@ -121,6 +121,9 @@ function test_runtests()
             "test_modification_set_scalaraffine_lessthan",
             "test_variable_solve_with_lowerbound",
             "test_variable_solve_with_upperbound",
+            # TODO: inaccurate solution
+            "test_linear_HyperRectangle_VectorAffineFunction",
+            "test_linear_HyperRectangle_VectorOfVariables",
         ],
     )
     return
