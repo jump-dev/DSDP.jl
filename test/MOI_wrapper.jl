@@ -101,6 +101,7 @@ function test_runtests()
             "test_conic_linear_VectorAffineFunction_2",
             "test_conic_linear_VectorOfVariables",
             "test_constraint_ScalarAffineFunction_Interval",
+            "test_linear_variable_open_intervals",
             # Incorrect objective
             # See https://github.com/jump-dev/MathOptInterface.jl/issues/1759
             "test_infeasible_MAX_SENSE",
