@@ -27,13 +27,10 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
 
     silent::Bool
     options::Dict{Symbol,Any}
-    function Optimizer(; kwargs...)
+    function Optimizer()
         optimizer = new(C_NULL, C_NULL, 0.0, 1, Cdouble[], Int[], Tuple{Int, Int, Int}[], Int[], C_NULL, 0, Int[],
                         Int[], Cdouble[], true, true, Cdouble[], true,
                         false, false, Dict{Symbol, Any}())
-		for (key, value) in kwargs
-			MOI.set(optimizer, MOI.RawOptimizerAttribute(key), value)
-		end
         finalizer(_free, optimizer)
         return optimizer
     end
