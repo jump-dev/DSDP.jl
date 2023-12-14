@@ -1,6 +1,4 @@
-using MathOptInterface
-const MOI = MathOptInterface
-const MOIU = MOI.Utilities
+import MathOptInterface as MOI
 const AFF = MOI.ScalarAffineFunction{Cdouble}
 const EQ = MOI.EqualTo{Cdouble}
 const AFFEQ = MOI.ConstraintIndex{AFF,EQ}
