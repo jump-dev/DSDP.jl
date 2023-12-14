@@ -13,7 +13,7 @@ Julia wrapper for the [DSDP](http://www.mcs.anl.gov/hs/software/DSDP/) semidefin
 
 You can install DSDP.jl as follows:
 ```julia
-julia> Pkg.add("https://github.com/joehuchette/DSDP.jl.git")
+julia> Pkg.add("https://github.com/jump-dev/DSDP.jl.git")
 julia> Pkg.build("DSDP")
 ```
 
