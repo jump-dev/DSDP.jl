@@ -657,10 +657,6 @@ function MOI.get(optimizer::Optimizer, attr::MOI.ConstraintPrimal,
     MOI.check_result_index_bounds(optimizer, attr)
     return vectorize_block(MOI.get(optimizer, PrimalSolutionMatrix()), block(optimizer, ci), S)
 end
-function MOI.get(optimizer::Optimizer, attr::MOI.ConstraintPrimal, ci::AFFEQ)
-    MOI.check_result_index_bounds(optimizer, attr)
-    return optimizer.b[ci.value]
-end
 
 function MOI.get(optimizer::Optimizer, attr::MOI.ConstraintDual,
                  ci::MOI.ConstraintIndex{MOI.VectorOfVariables, S}) where S<:SupportedSets
