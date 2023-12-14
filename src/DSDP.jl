@@ -1,17 +1,12 @@
 module DSDP
-using Libdl, LinearAlgebra
-
-if isfile(joinpath(dirname(@__FILE__), "..", "deps", "deps.jl"))
-    include("../deps/deps.jl")
-else
-    error("DSDP not properly installed. Please run Pkg.build(\"DSDP\")")
-end
+import DSDP_jll
+using LinearAlgebra
 
 macro dsdp_ccall(f, args...)
     quote
         # QuoteNode prevents the interpretion of the symbol
         # and leave it as a symbol
-        info = ccall(($(QuoteNode(f)), libdsdp), Cint, $(esc.(args)...))
+        info = ccall(($(QuoteNode(f)), DSDP_jll.libdsdp), Cint, $(esc.(args)...))
         if !iszero(info)
             error("DSDP call $($(QuoteNode(f))) returned nonzero status $info.")
         end
