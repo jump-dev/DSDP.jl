@@ -41,8 +41,8 @@ function View3(sdpcone::SDPConeT)
     @dsdp_ccall SDPConeView3 (SDPConeT,) sdpcone
 end
 
-function SetASparseVecMat(sdpcone::SDPConeT, arg2::Integer, arg3::Integer, arg4::Integer, arg5::Cdouble, arg6::Integer, arg7, arg8, arg9::Integer)
-    @dsdp_ccall SDPConeSetASparseVecMat (SDPConeT, Cint, Cint, Cint, Cdouble, Cint, Ptr{Cint}, Ptr{Cdouble}, Cint) sdpcone arg2 arg3 arg4 arg5 arg6 arg7 arg8 arg9
+function SetASparseVecMat(sdpcone::SDPConeT, blockj::Integer, vari::Integer, n::Integer, alpha::Cdouble, ishift::Integer, ind, val, nnz::Integer)
+    @dsdp_ccall SDPConeSetASparseVecMat (SDPConeT, Cint, Cint, Cint, Cdouble, Cint, Ptr{Cint}, Ptr{Cdouble}, Cint) sdpcone blockj vari n alpha ishift ind val nnz
 end
 
 function SetADenseVecMat(sdpcone::SDPConeT, arg2::Integer, arg3::Integer, arg4::Integer, arg5::Cdouble, arg6, arg7::Integer)
@@ -117,8 +117,11 @@ function SetXArray(sdpcone::SDPConeT, arg2::Integer, arg3::Integer, arg4, arg5::
     @dsdp_ccall SDPConeSetXArray (SDPConeT, Cint, Cint, Ptr{Cdouble}, Cint) sdpcone arg2 arg3 arg4 arg5
 end
 
-function GetXArray(sdpcone::SDPConeT, arg2::Integer, arg3, arg4)
-    @dsdp_ccall SDPConeGetXArray (SDPConeT, Cint, Ptr{Ptr{Cdouble}}, Ptr{Cint}) sdpcone arg2 arg3 arg4
+function GetXArray(sdpcone::SDPConeT, blockj::Integer)
+    xmat = Ref{Ptr{Cdouble}}()
+    nn = Ref{Cint}()
+    @dsdp_ccall SDPConeGetXArray (SDPConeT, Cint, Ptr{Ptr{Cdouble}}, Ptr{Cint}) sdpcone blockj xmat nn
+    unsafe_wrap(Array, xmat[], nn[])
 end
 
 function RestoreXArray(sdpcone::SDPConeT, arg2::Integer, arg3, arg4)
