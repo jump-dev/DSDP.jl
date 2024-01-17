@@ -295,10 +295,9 @@ function load_objective_term!(optimizer::Optimizer, index_map, α, vi::MOI.Varia
 end
 
 function _set_A_matrices(m::Optimizer, i)
-    for i in eachindex(m.blockdims)
-        if m.blockdims[i] > 0
-            blk = m.blk[i]
-            SDPCone.SetASparseVecMat(m.sdpcone, blk - 1, i, m.blockdims[i], 1.0, 0, m.sdpdinds[blk], m.sdpdcoefs[blk], length(m.sdpdcoefs[blk]))
+    for (blk, blkdim) in zip(m.blk, m.blockdims)
+        if blkdim > 0
+            SDPCone.SetASparseVecMat(m.sdpcone, blk - 1, i, blkdim, 1.0, 0, m.sdpdinds[blk], m.sdpdcoefs[blk], length(m.sdpdcoefs[blk]))
         end
     end
 end
@@ -708,11 +707,11 @@ function MOI.get(optimizer::Optimizer, attr::MOI.ConstraintPrimal,
     return vectorize_block(MOI.get(optimizer, PrimalSolutionMatrix()), block(optimizer, ci), S)
 end
 
-function MOI.get(optimizer::Optimizer, attr::MOI.ConstraintDual,
-                 ci::MOI.ConstraintIndex{MOI.VectorOfVariables, S}) where S<:SupportedSets
-    MOI.check_result_index_bounds(optimizer, attr)
-    return vectorize_block(MOI.get(optimizer, DualSlackMatrix()), block(optimizer, ci), S)
-end
+#function MOI.get(optimizer::Optimizer, attr::MOI.ConstraintDual,
+#                 ci::MOI.ConstraintIndex{MOI.VectorOfVariables, S}) where S<:SupportedSets
+#    MOI.check_result_index_bounds(optimizer, attr)
+#    return vectorize_block(MOI.get(optimizer, DualSlackMatrix()), block(optimizer, ci), S)
+#end
 function MOI.get(optimizer::Optimizer, attr::MOI.ConstraintDual, ci::AFFEQ)
     MOI.check_result_index_bounds(optimizer, attr)
     return -MOI.get(optimizer, DualSolutionVector())[ci.value]
