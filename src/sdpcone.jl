@@ -46,7 +46,6 @@ function View3(sdpcone::SDPConeT)
 end
 
 function SetASparseVecMat(sdpcone::SDPConeT, blockj::Integer, vari::Integer, n::Integer, alpha::Cdouble, ishift::Integer, ind::Union{Ptr{Cint},Vector{Cint}}, val::Union{Ptr{Cdouble},Vector{Cdouble}}, nnz::Integer)
-    println("DSDP.SDPCone.SetASparseVecMat(sdpcone, $blockj, $vari, $n, $alpha, $ishift, $ind, $val, $nnz)")
     @dsdp_ccall SDPConeSetASparseVecMat (SDPConeT, Cint, Cint, Cint, Cdouble, Cint, Ptr{Cint}, Ptr{Cdouble}, Cint) sdpcone blockj vari n alpha ishift ind val nnz
 end
 

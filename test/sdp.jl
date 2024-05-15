@@ -35,8 +35,6 @@ function test_sdp(tol = 1e-6)
     y = zeros(Cdouble, 1)
     DSDP.GetY(dsdp, y)
     @test y[1] ≈ 2 rtol = tol
-    DSDP.PrintData(dsdp, sdpcone, C_NULL)
-    DSDP.PrintSolution(dsdp, sdpcone, C_NULL)
     return
 end
 

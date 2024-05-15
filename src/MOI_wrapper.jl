@@ -188,7 +188,6 @@ for (param, default) in Iterators.flatten((options, gettable_options))
             get(options, $sym, $default)
         end
         function _call_set!(dsdp, ::$param, val)
-            println("$setter(dsdp, $val)")
             $setter(dsdp, val)
         end
     end
@@ -282,8 +281,6 @@ function _setcoefficient!(m::Optimizer, coef, constr::Integer, blk::Integer, i::
         push!(m.lpcoefs, coef)
     else
         sdp = m.blk[blk]
-        @show m.sdpdinds
-        @show m.sdpdinds[end]
         push!(m.sdpdinds[end][sdp], i + (j - 1) * m.blockdims[blk] - 1)
         if i != j
             coef /= 2
@@ -350,7 +347,6 @@ function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
     dest.blk = zero(dest.blockdims)
     num_sdp = 0
     for i in 1:length(dest.blockdims)
-        @show dest.blockdims[i]
         if dest.blockdims[i] < 0
             dest.blk[i] = dest.nlpdrows
             dest.nlpdrows -= dest.blockdims[i]
@@ -363,35 +359,27 @@ function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
     dest.lpdrows = Int[]
     dest.lpcoefs = Cdouble[]
 
-    println("dsdp = DSDP.Create($(length(dest.b)))")
     dest.dsdp = Create(length(dest.b))
     for (option, value) in dest.options
-        @show option, value
         options_setters[option](dest.dsdp, value)
     end
 
     if !iszero(num_sdp)
-        println("sdpcone = DSDP.CreateSDPCone(dsdp, $num_sdp)")
         dest.sdpcone = CreateSDPCone(dest.dsdp, num_sdp)
         for i in eachindex(dest.blockdims)
-            @show dest.blockdims[i]
             if dest.blockdims[i] < 0
                 continue
             end
             blk = dest.blk[i]
-            println("DSDP.SDPCone.SetBlockSize(sdpcone, $(blk - 1), $(dest.blockdims[i]))")
             SDPCone.SetBlockSize(dest.sdpcone, blk - 1, dest.blockdims[i])
             # TODO what does this `0` mean ?
-            println("DSDP.SDPCone.SetSparsity(sdpcone, $(blk - 1), 0)")
             SDPCone.SetSparsity(dest.sdpcone, blk - 1, 0)
-            println("DSDP.SDPCone.SetStorageFormat(sdpcone, $(blk - 1), UInt8('U'))")
             SDPCone.SetStorageFormat(dest.sdpcone, blk - 1, UInt8('U'))
         end
     end
     for constr in eachindex(dest.b)
         # TODO in examples/readsdpa.c line 162,
         # -0.0 is used instead of 0.0 if the dual obj is <= 0., check if it has impact
-        println("DSDP.SetY0(dsdp, $constr, 0.0)")
         SetY0(dest.dsdp, constr, 0.0)
     end
     # TODO ComputeY0 as in examples/readsdpa.c
@@ -411,7 +399,6 @@ function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
                 ),
             )
         end
-        println("DSDP.SetDualObjective(dsdp, $k, $(MOI.constant(set)))")
         SetDualObjective(dest.dsdp, k, MOI.constant(set))
         _new_A_matrix(dest)
         for t in func.terms
@@ -463,13 +450,10 @@ function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
 
     # Pass info to `dest.dsdp`
     if !isempty(dest.lpdvars)
-        println("lpcone = DSDP.CreateLPCone(dsdp)")
         dest.lpcone = CreateLPCone(dest.dsdp)
-        println("DSDP.LPCone.SetDataSparse(lpcone, $(dest.nlpdrows), $(length(dest.b) + 1), $(dest.lpdvars), $(dest.lpdrows), $(dest.lpcoefs))")
         LPCone.SetDataSparse(dest.lpcone, dest.nlpdrows, length(dest.b) + 1, dest.lpdvars, dest.lpdrows, dest.lpcoefs)
     end
 
-    println("DSDP.Setup(dsdp)")
     Setup(dest.dsdp)
     PrintData(dest.dsdp, dest.sdpcone, dest.lpcone)
 
@@ -477,7 +461,6 @@ function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
 end
 
 function MOI.optimize!(m::Optimizer)
-    println("DSDP.Solve(dsdp)")
     Solve(m.dsdp)
 
     m.x_computed = false
@@ -491,15 +474,6 @@ function MOI.optimize!(m::Optimizer)
     # and
     # https://github.com/JuliaOpt/SCS.jl/pull/91
     compute_x(m)
-    @show SDPCone.GetXArray(m.sdpcone, 0)
-    PrintSolution(m.dsdp, m.sdpcone, m.lpcone)
-    @show GetIts(m.dsdp)
-    @show GetFinalErrors(m.dsdp)
-    @show StopReason(m.dsdp)
-    @show GetSolutionType(m.dsdp)
-    @show GetDObjective(m.dsdp)
-    @show GetPObjective(m.dsdp)
-    @show SDPCone.GetXArray(m.sdpcone, 0)
 
     compute_z(m)
 end
@@ -508,9 +482,7 @@ function MOI.get(m::Optimizer, ::MOI.RawStatusString)
     if m.dsdp == C_NULL
         return "`optimize!` not called"
     end
-    println("@show DSDP.StopReason(dsdp)")
     status = StopReason(m.dsdp)
-    #compute_x(m)
     if status == DSDP_CONVERGED
         return "Converged"
     elseif status == DSDP_INFEASIBLE_START
@@ -538,9 +510,7 @@ function MOI.get(m::Optimizer, ::MOI.TerminationStatus)
     if m.dsdp == C_NULL
         return MOI.OPTIMIZE_NOT_CALLED
     end
-    println("@show DSDP.StopReason(dsdp)")
     status = StopReason(m.dsdp)
-    #compute_x(m)
     if status == DSDP_CONVERGED
         sol_status = GetSolutionType(m.dsdp)
         if sol_status == DSDP_PDFEASIBLE
@@ -579,8 +549,6 @@ function MOI.get(m::Optimizer, attr::MOI.PrimalStatus)
     if attr.result_index > MOI.get(m, MOI.ResultCount())
         return MOI.NO_SOLUTION
     end
-    #compute_x(m)
-    println("@show DSDP.GetSolutionType(dsdp)")
     status = GetSolutionType(m.dsdp)
     if status == DSDP_PDUNKNOWN
         return MOI.UNKNOWN_RESULT_STATUS
@@ -599,8 +567,6 @@ function MOI.get(m::Optimizer, attr::MOI.DualStatus)
     if attr.result_index > MOI.get(m, MOI.ResultCount())
         return MOI.NO_SOLUTION
     end
-    #compute_x(m)
-    println("@show DSDP.GetSolutionType(dsdp)")
     status = GetSolutionType(m.dsdp)
     if status == DSDP_PDUNKNOWN
         return MOI.UNKNOWN_RESULT_STATUS
@@ -618,14 +584,10 @@ end
 MOI.get(m::Optimizer, ::MOI.ResultCount) = m.dsdp == C_NULL ? 0 : 1
 function MOI.get(m::Optimizer, attr::MOI.ObjectiveValue)
     MOI.check_result_index_bounds(m, attr)
-    println("@show DSDP.GetPPObjective(dsdp)")
-    @show DSDP.GetPPObjective(m.dsdp)
     return m.objective_sign * GetPPObjective(m.dsdp) + m.objective_constant
 end
 function MOI.get(m::Optimizer, attr::MOI.DualObjectiveValue)
     MOI.check_result_index_bounds(m, attr)
-    println("@show DSDP.GetDDObjective(dsdp)")
-    @show DSDP.GetDDObjective(m.dsdp)
     return m.objective_sign * GetDDObjective(m.dsdp) + m.objective_constant
 end
 
@@ -654,7 +616,6 @@ nblocks(x::BlockMat) = length(x.optimizer.blk)
 function compute_x(m::Optimizer)
     #if !m.x_computed
         @assert m.dsdp != C_NULL
-        println("DSDP.ComputeX(dsdp)")
         ComputeX(m.dsdp)
         m.x_computed = true
         m.z_computed = false
@@ -666,7 +627,6 @@ struct LPXBlock <: LPBlock
     offset::Int
 end
 function get_array(x::LPXBlock)
-    println("@show DSDP.LPCone.GetXArray(lpcone)")
     LPCone.GetXArray(x.lpcone)
 end
 struct SDPXBlock <: SDPBlock
@@ -676,13 +636,8 @@ struct SDPXBlock <: SDPBlock
 end
 #get_array(x::SDPXBlock) = SDPCone.GetXArray(x.sdpcone, x.blockj - 1)
 function get_array(x::SDPXBlock)
-    #println("@show DSDP.SDPCone.ComputeX(sdpcone, $(x.blockj - 1), $(x.dim), $(div(x.dim * (x.dim + 1), 2)))")
-    #DSDP.ComputeX(dsdp)
-    println("@show DSDP.SDPCone.GetXArray(sdpcone, $(x.blockj - 1))")
     v = SDPCone.GetXArray(x.sdpcone, x.blockj - 1)
-    @show v
     return [v[i + (j - 1) * x.dim] for j in 1:x.dim for i in 1:j]
-    #SDPCone.ComputeX(x.sdpcone, x.blockj - 1, x.dim, div(x.dim * (x.dim + 1), 2))
 end
 struct XBlockMat <: BlockMat
     optimizer::Optimizer
@@ -704,7 +659,6 @@ MOI.is_set_by_optimize(::DualSolutionVector) = true
 function MOI.get(optimizer::Optimizer, ::DualSolutionVector)
     if !optimizer.y_valid
         optimizer.y = Vector{Cdouble}(undef, length(optimizer.b))
-        println("@show DSDP.GetY(dsdp, $(optimizer.y))")
         GetY(optimizer.dsdp, optimizer.y)
         map!(-, optimizer.y, optimizer.y) # The primal objective is Max in SDOI but Min in DSDP
     end
@@ -714,7 +668,6 @@ end
 function compute_z(m::Optimizer)
     if !m.z_computed
         GC.@preserve m begin
-            println("DSDP.ComputeAndFactorS(dsdp)")
             #ComputeAndFactorS(m.dsdp)
         end
         m.z_computed = true
@@ -726,7 +679,6 @@ struct LPZBlock <: LPBlock
     offset::Int
 end
 function get_array(z::LPZBlock)
-    println("@show DSDP.LPCone.GetSArray(lpcone)")
     LPCone.GetSArray(z.lpcone)
 end
 struct SDPZBlock <: SDPBlock
@@ -735,7 +687,6 @@ struct SDPZBlock <: SDPBlock
     blockj::Int
 end
 function get_array(x::SDPZBlock)
-    println("@show DSDP.SDPCone.GetZArray(sdpcone, $(x.blockj - 1))")
     SDPCone.GetZArray(x.sdpcone, x.blockj - 1)
 end
 struct ZBlockMat <: BlockMat

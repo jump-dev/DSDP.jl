@@ -2,20 +2,11 @@ module DSDP
 import DSDP_jll
 using LinearAlgebra
 
-const lib = DSDP_jll.libdsdp
-#const lib = "/home/blegat/bin/DSDP5.8/lib/libdsdp.so"
-
-#function _print(f, args)
-#    a = join(args, ',')
-#    println("$f$a")
-#end
-
 macro dsdp_ccall(f, args...)
     quote
         # QuoteNode prevents the interpretion of the symbol
         # and leave it as a symbol
-        #_print($(QuoteNode(f)), $(esc(args)))
-        info = ccall(($(QuoteNode(f)), lib), Cint, $(esc.(args)...))
+        info = ccall(($(QuoteNode(f)), DSDP_jll.libdsdp), Cint, $(esc.(args)...))
         if !iszero(info)
             error("DSDP call $($(QuoteNode(f))) returned nonzero status $info.")
         end

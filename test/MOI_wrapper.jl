@@ -38,7 +38,7 @@ function test_runtests()
     # `Variable.ZerosBridge` makes dual needed by some tests fail.
     MOI.Bridges.remove_bridge(
         model.optimizer,
-        MathOptInterface.Bridges.Variable.ZerosBridge{Float64},
+        MOI.Bridges.Variable.ZerosBridge{Float64},
     )
     MOI.set(model, MOI.Silent(), true)
     MOI.Test.runtests(
