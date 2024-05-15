@@ -3,8 +3,6 @@
 [![Build Status](https://github.com/jump-dev/DSDP.jl/workflows/CI/badge.svg?branch=master)](https://github.com/jump-dev/DSDP.jl/actions?query=workflow%3ACI)
 [![codecov](https://codecov.io/gh/jump-dev/DSDP.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/jump-dev/DSDP.jl)
 
-**Important note**: this is still a work on progress. The use of positive semidefinite matrices in linear equality constraints has not been implemented yet so only linear programs can be solved at the moment with DSDP.
-
 [DSDP.jl](https://github.com/jump-dev/DSDP.jl) is a wrapper for the
 [DSDP](http://www.mcs.anl.gov/hs/software/DSDP/) solver.
 
@@ -57,7 +55,7 @@ List of supported objective functions:
 List of supported variable types:
 
  * [`MOI.Nonnegatives`](@ref)
- * [`MOI.PositiveSemidefiniteConeTriangle`](@ref) (**only** on this PR at the moment: https://github.com/jump-dev/DSDP.jl/pull/29)
+ * [`MOI.PositiveSemidefiniteConeTriangle`](@ref)
 
 List of supported constraint types:
 
