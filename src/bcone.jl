@@ -33,11 +33,11 @@ function View(bcone::BConeT)
     @dsdp_ccall BConeView (BConeT,) bcone
 end
 
-function SetXArray(bcone::BConeT, arg2, arg3::Integer)
+function SetXArray(bcone::BConeT, arg2::Vector{Cdouble}, arg3::Integer)
     @dsdp_ccall BConeSetXArray (BConeT, Ptr{Cdouble}, Cint) bcone arg2 arg3
 end
 
-function CopyX(bcone::BConeT, arg2, arg3, arg4::Integer)
+function CopyX(bcone::BConeT, arg2::Vector{Cdouble}, arg3::Vector{Cdouble}, arg4::Integer)
     @dsdp_ccall BConeCopyX (BConeT, Ptr{Cdouble}, Ptr{Cdouble}, Cint) bcone arg2 arg3 arg4
 end
 

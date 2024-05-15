@@ -2,6 +2,10 @@
 # Automatically generated using Clang.jl wrap_c, version 0.0.0
 
 
+function LogInfoAllow(i::Integer)
+    @dsdp_ccall DSDPLogInfoAllow (Cint, Ptr{Cchar}) i C_NULL
+end
+
 function SetConvergenceFlag(dsdp::DSDPT, arg2::DSDPTerminationReason)
     @dsdp_ccall DSDPSetConvergenceFlag (DSDPT, DSDPTerminationReason) dsdp arg2
 end
@@ -90,11 +94,11 @@ function GetPenaltyParameter(dsdp::DSDPT)
     pp[]
 end
 
-function GetPenalty(dsdp::DSDPT, arg2)
+function GetPenalty(dsdp::DSDPT, arg2::Vector{Cdouble})
     @dsdp_ccall DSDPGetPenalty (DSDPT, Ptr{Cdouble}) dsdp arg2
 end
 
-function CopyB(dsdp::DSDPT, arg2, arg3::Integer)
+function CopyB(dsdp::DSDPT, arg2::Vector{Cdouble}, arg3::Integer)
     @dsdp_ccall DSDPCopyB (DSDPT, Ptr{Cdouble}, Cint) dsdp arg2 arg3
 end
 
@@ -102,7 +106,7 @@ function SetR0(dsdp::DSDPT, arg2::Cdouble)
     @dsdp_ccall DSDPSetR0 (DSDPT, Cdouble) dsdp arg2
 end
 
-function GetR(dsdp::DSDPT, arg2)
+function GetR(dsdp::DSDPT, arg2::Vector{Cdouble})
     @dsdp_ccall DSDPGetR (DSDPT, Ptr{Cdouble}) dsdp arg2
 end
 
@@ -132,7 +136,7 @@ function GetDYMakeX(dsdp::DSDPT, arg2, arg3::Integer)
     @dsdp_ccall DSDPGetDYMakeX (DSDPT, Ptr{Cdouble}, Cint) dsdp arg2 arg3
 end
 
-function GetMuMakeX(dsdp::DSDPT, arg2)
+function GetMuMakeX(dsdp::DSDPT, arg2::Vector{Cdouble})
     @dsdp_ccall DSDPGetMuMakeX (DSDPT, Ptr{Cdouble}) dsdp arg2
 end
 
@@ -156,7 +160,7 @@ function GetReuseMatrix(dsdp::DSDPT)
     reuse[]
 end
 
-function GetDimension(dsdp::DSDPT, arg2)
+function GetDimension(dsdp::DSDPT, arg2::Vector{Cdouble})
     @dsdp_ccall DSDPGetDimension (DSDPT, Ptr{Cdouble}) dsdp arg2
 end
 
@@ -222,7 +226,7 @@ function GetPTolerance(dsdp::DSDPT)
     ptol[]
 end
 
-function GetPInfeasibility(dsdp::DSDPT, arg2)
+function GetPInfeasibility(dsdp::DSDPT, arg2::Vector{Cdouble})
     @dsdp_ccall DSDPGetPInfeasibility (DSDPT, Ptr{Cdouble}) dsdp arg2
 end
 
@@ -262,7 +266,7 @@ function UseDynamicRho(dsdp::DSDPT, arg2::Integer)
     @dsdp_ccall DSDPUseDynamicRho (DSDPT, Cint) dsdp arg2
 end
 
-function GetPotential(dsdp::DSDPT, arg2)
+function GetPotential(dsdp::DSDPT, arg2::Vector{Cdouble})
     @dsdp_ccall DSDPGetPotential (DSDPT, Ptr{Cdouble}) dsdp arg2
 end
 
@@ -270,31 +274,35 @@ function UseLAPACKForSchur(dsdp::DSDPT, arg2::Integer)
     @dsdp_ccall DSDPUseLAPACKForSchur (DSDPT, Cint) dsdp arg2
 end
 
-function GetNumberOfVariables(dsdp::DSDPT, arg2)
+function GetNumberOfVariables(dsdp::DSDPT, arg2::Vector{Cint})
     @dsdp_ccall DSDPGetNumberOfVariables (DSDPT, Ptr{Cint}) dsdp arg2
 end
 
-function GetFinalErrors(dsdp::DSDPT, arg2::NTuple{6, Cdouble})
-    @dsdp_ccall DSDPGetFinalErrors (DSDPT, NTuple{6, Cdouble}) dsdp arg2
+function GetFinalErrors(dsdp::DSDPT)
+    err = zeros(Cdouble, 6)
+    @dsdp_ccall DSDPGetFinalErrors (DSDPT, Ptr{Cdouble}) dsdp err
+    return err
 end
 
-function GetGapHistory(dsdp::DSDPT, arg2, arg3::Integer)
+function GetGapHistory(dsdp::DSDPT, arg2::Vector{Cdouble}, arg3::Integer)
     @dsdp_ccall DSDPGetGapHistory (DSDPT, Ptr{Cdouble}, Cint) dsdp arg2 arg3
 end
 
-function GetRHistory(dsdp::DSDPT, arg2, arg3::Integer)
+function GetRHistory(dsdp::DSDPT, arg2::Vector{Cdouble}, arg3::Integer)
     @dsdp_ccall DSDPGetRHistory (DSDPT, Ptr{Cdouble}, Cint) dsdp arg2 arg3
 end
 
-function GetIts(dsdp::DSDPT, arg2)
-    @dsdp_ccall DSDPGetIts (DSDPT, Ptr{Cint}) dsdp arg2
+function GetIts(dsdp::DSDPT)
+    its = Ref{Cint}()
+    @dsdp_ccall DSDPGetIts (DSDPT, Ptr{Cint}) dsdp its
+    return its[]
 end
 
-function GetPnorm(dsdp::DSDPT, arg2)
+function GetPnorm(dsdp::DSDPT, arg2::Vector{Cdouble})
     @dsdp_ccall DSDPGetPnorm (DSDPT, Ptr{Cdouble}) dsdp arg2
 end
 
-function GetStepLengths(dsdp::DSDPT, arg2, arg3)
+function GetStepLengths(dsdp::DSDPT, arg2::Vector{Cdouble}, arg3::Vector{Cdouble})
     @dsdp_ccall DSDPGetStepLengths (DSDPT, Ptr{Cdouble}, Ptr{Cdouble}) dsdp arg2 arg3
 end
 
@@ -322,11 +330,11 @@ function PrintLogInfo(arg1::Integer)
     @dsdp_ccall DSDPPrintLogInfo (Cint,) arg1
 end
 
-function ComputeMinimumXEigenvalue(dsdp::DSDPT, arg2)
+function ComputeMinimumXEigenvalue(dsdp::DSDPT, arg2::Vector{Cdouble})
     @dsdp_ccall DSDPComputeMinimumXEigenvalue (DSDPT, Ptr{Cdouble}) dsdp arg2
 end
 
-function GetTraceX(dsdp::DSDPT, sdpcone)
+function GetTraceX(dsdp::DSDPT, sdpcone::Vector{Cdouble})
     @dsdp_ccall DSDPGetTraceX (DSDPT, Ptr{Cdouble}) dsdp sdpcone
 end
 
@@ -342,7 +350,7 @@ function GetDataNorms(dsdp::DSDPT, arg2::NTuple{3, Cdouble})
     @dsdp_ccall DSDPGetDataNorms (DSDPT, NTuple{3, Cdouble}) dsdp arg2
 end
 
-function GetYMaxNorm(dsdp::DSDPT, arg2)
+function GetYMaxNorm(dsdp::DSDPT, arg2::Vector{Cdouble})
     @dsdp_ccall DSDPGetYMaxNorm (DSDPT, Ptr{Cdouble}) dsdp arg2
 end
 
@@ -365,11 +373,11 @@ function SetFixedVariable(dsdp::DSDPT, arg2::Integer, arg3::Cdouble)
     @dsdp_ccall DSDPSetFixedVariable (DSDPT, Cint, Cdouble) dsdp arg2 arg3
 end
 
-function SetFixedVariables(dsdp::DSDPT, arg2, arg3, arg4, arg5::Integer)
+function SetFixedVariables(dsdp::DSDPT, arg2::Vector{Cdouble}, arg3::Vector{Cdouble}, arg4::Vector{Cdouble}, arg5::Integer)
     @dsdp_ccall DSDPSetFixedVariables (DSDPT, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}, Cint) dsdp arg2 arg3 arg4 arg5
 end
 
-function GetFixedYX(dsdp::DSDPT, arg2::Integer, arg3)
+function GetFixedYX(dsdp::DSDPT, arg2::Integer, arg3::Vector{Cdouble})
     @dsdp_ccall DSDPGetFixedYX (DSDPT, Cint, Ptr{Cdouble}) dsdp arg2 arg3
 end
 
@@ -381,11 +389,11 @@ function PrintOptions()
     ccall((:DSDPPrintOptions, libdsdp), Cint, ())
 end
 
-function SetOptions(dsdp::DSDPT, arg2, arg3::Integer)
+function SetOptions(dsdp::DSDPT, arg2::Vector{Cstring}, arg3::Integer)
     @dsdp_ccall DSDPSetOptions (DSDPT, Ptr{Cstring}, Cint) dsdp arg2 arg3
 end
 
-function ReadOptions(dsdp::DSDPT, arg2)
+function ReadOptions(dsdp::DSDPT, arg2::Vector{UInt8})
     @dsdp_ccall DSDPReadOptions (DSDPT, Ptr{UInt8}) dsdp arg2
 end
 

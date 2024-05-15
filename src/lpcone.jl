@@ -38,11 +38,11 @@ function SetData(lpcone::LPConeT, n::Integer, nnzin::Vector{Cint}, row::Vector{C
     @dsdp_ccall LPConeSetData (LPConeT, Cint, Ptr{Cint}, Ptr{Cint}, Ptr{Cdouble}) lpcone n nnzin row aval
 end
 
-function SetData2(arg1::LPConeT, arg2::Integer, arg3, arg4, arg5)
+function SetData2(arg1::LPConeT, arg2::Integer, arg3::Vector{Cint}, arg4::Vector{Cint}, arg5::Vector{Cdouble})
     @dsdp_ccall LPConeSetData2 (LPConeT, Cint, Ptr{Cint}, Ptr{Cint}, Ptr{Cdouble}) arg1 arg2 arg3 arg4 arg5
 end
 
-function GetData(arg1::LPConeT, arg2::Integer, arg3, arg4::Integer)
+function GetData(arg1::LPConeT, arg2::Integer, arg3::Vector{Cdouble}, arg4::Integer)
     @dsdp_ccall LPConeGetData (LPConeT, Cint, Ptr{Cdouble}, Cint) arg1 arg2 arg3 arg4
 end
 
@@ -78,7 +78,7 @@ function View2(lpcone::LPConeT)
     @dsdp_ccall LPConeView2 (LPConeT,) lpcone
 end
 
-function CopyS(arg1::LPConeT, arg2, arg3::Integer)
+function CopyS(arg1::LPConeT, arg2::Vector{Cdouble}, arg3::Integer)
     @dsdp_ccall LPConeCopyS (LPConeT, Ptr{Cdouble}, Cint) arg1 arg2 arg3
 end
 
