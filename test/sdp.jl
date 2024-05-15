@@ -1,5 +1,4 @@
 using Test, DSDP
-DSDP.LogInfoAllow(3)
 
 function test_sdp(tol)
     dsdp = DSDP.Create(1)
