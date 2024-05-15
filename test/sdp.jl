@@ -1,4 +1,4 @@
-function test_sdp_copy(tol)
+function test_sdp(tol)
     dsdp = DSDP.Create(1)
     sdpcone = DSDP.CreateSDPCone(dsdp, 1)
     DSDP.SDPCone.SetBlockSize(sdpcone, 0, 2)
@@ -30,4 +30,4 @@ function test_sdp_copy(tol)
     DSDP.ComputeX(dsdp)
     @test DSDP.SDPCone.GetXArray(sdpcone, 0) ≈ [1, 0, 1, 1] rtol = 1e-6
 end
-test_sdp_copy(1e-6)
+test_sdp(1e-6)
