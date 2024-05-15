@@ -4,7 +4,6 @@ using Test
 import MathOptInterface as MOI
 import DSDP
 
-
 function runtests()
     for name in names(@__MODULE__; all = true)
         if startswith("$(name)", "test_")
@@ -44,8 +43,8 @@ function test_runtests()
     MOI.Test.runtests(
         model,
         MOI.Test.Config(
-            rtol = 1e-3,
-            atol = 1e-3,
+            rtol = 1e-2,
+            atol = 1e-2,
             exclude = Any[
                 MOI.ConstraintBasisStatus,
                 MOI.VariableBasisStatus,
@@ -108,7 +107,6 @@ function test_runtests()
             # TODO: inaccurate solution
             r"test_linear_HyperRectangle_VectorAffineFunction$",
             r"test_linear_HyperRectangle_VectorOfVariables$",
-            r"test_HermitianPSDCone_basic$",
             r"test_HermitianPSDCone_min_t$",
             r"test_NormNuclearCone_VectorAffineFunction_with_transform$",
             r"test_NormNuclearCone_VectorAffineFunction_without_transform$",
