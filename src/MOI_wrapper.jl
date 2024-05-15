@@ -31,10 +31,7 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
     sdpdinds::Vector{Vector{Vector{Cint}}}
     sdpdcoefs::Vector{Vector{Vector{Cdouble}}}
 
-    x_computed::Bool
-    y_valid::Bool
     y::Vector{Cdouble}
-    z_computed::Bool
 
     silent::Bool
     options::Dict{Symbol,Any}
@@ -44,8 +41,7 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
             Tuple{Int, Int, Int}[], Int[], C_NULL, 0,
             Int[], Int[], Cdouble[],
             Vector{Int}[], Vector{Cdouble}[],
-            true, true, Cdouble[], true,
-            false, Dict{Symbol, Any}(),
+            Cdouble[], false, Dict{Symbol, Any}(),
         )
         finalizer(_free, optimizer)
         return optimizer
@@ -76,11 +72,7 @@ function MOI.empty!(optimizer::Optimizer)
     empty!(optimizer.lpcoefs)
     empty!(optimizer.sdpdinds)
     empty!(optimizer.sdpdcoefs)
-
-    optimizer.x_computed = false
-    optimizer.y_valid = true
     empty!(optimizer.y)
-    optimizer.z_computed = false
 end
 
 function MOI.is_empty(optimizer::Optimizer)
@@ -384,10 +376,7 @@ function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
     end
     # TODO ComputeY0 as in examples/readsdpa.c
 
-    dest.x_computed = false
-    # dest.y does not contain the solution y
-    dest.y_valid = false
-    dest.z_computed = false
+    empty!(dest.y)
 
     for (k, ci_src) in enumerate(cis_src)
         func = MOI.get(src, MOI.CanonicalConstraintFunction(), ci_src)
@@ -461,20 +450,13 @@ end
 
 function MOI.optimize!(m::Optimizer)
     Solve(m.dsdp)
-
-    m.x_computed = false
-    # m.y does not contain the solution y
-    m.y_valid = false
-    m.z_computed = true
-
-    # It seems that calling this later causes segfaults, maybe it can be fixed
-    # with some `GC.@preserve` somewhere like in
-    # https://github.com/JuliaOpt/ECOS.jl/pull/63
-    # and
-    # https://github.com/JuliaOpt/SCS.jl/pull/91
-    compute_x(m)
-
-    compute_z(m)
+    # Calling `ComputeX` not right after `Solve` seems to sometime cause segfaults or weird Heisenbug's
+    # let's call it directly what `DSDP/examples/readsdpa.c` does
+    ComputeX(m.dsdp)
+    m.y = zeros(Cdouble, length(m.b))
+    GetY(m.dsdp, m.y)
+    map!(-, m.y, m.y) # The primal objective is Max in SDOI but Min in DSDP
+    return
 end
 
 function MOI.get(m::Optimizer, ::MOI.RawStatusString)
@@ -612,14 +594,6 @@ include("blockdiag.jl")
 abstract type BlockMat <: AbstractBlockMatrix{Cdouble} end
 nblocks(x::BlockMat) = length(x.optimizer.blk)
 
-function compute_x(m::Optimizer)
-    #if !m.x_computed
-        @assert m.dsdp != C_NULL
-        ComputeX(m.dsdp)
-        m.x_computed = true
-        m.z_computed = false
-    #end
-end
 struct LPXBlock <: LPBlock
     lpcone::LPCone.LPConeT
     dim::Int
@@ -642,7 +616,6 @@ struct XBlockMat <: BlockMat
     optimizer::Optimizer
 end
 function block(x::XBlockMat, i)
-    #compute_x(x.optimizer)
     if x.optimizer.blockdims[i] < 0
         LPXBlock(x.optimizer.lpcone, abs(x.optimizer.blockdims[i]), x.optimizer.blk[i])
     else
@@ -656,52 +629,8 @@ MOI.get(optimizer::Optimizer, ::PrimalSolutionMatrix) = XBlockMat(optimizer)
 struct DualSolutionVector <: MOI.AbstractModelAttribute end
 MOI.is_set_by_optimize(::DualSolutionVector) = true
 function MOI.get(optimizer::Optimizer, ::DualSolutionVector)
-    if !optimizer.y_valid
-        optimizer.y = Vector{Cdouble}(undef, length(optimizer.b))
-        GetY(optimizer.dsdp, optimizer.y)
-        map!(-, optimizer.y, optimizer.y) # The primal objective is Max in SDOI but Min in DSDP
-    end
     return optimizer.y
 end
-
-function compute_z(m::Optimizer)
-    if !m.z_computed
-        GC.@preserve m begin
-            #ComputeAndFactorS(m.dsdp)
-        end
-        m.z_computed = true
-    end
-end
-struct LPZBlock <: LPBlock
-    lpcone::LPCone.LPConeT
-    dim::Int
-    offset::Int
-end
-function get_array(z::LPZBlock)
-    LPCone.GetSArray(z.lpcone)
-end
-struct SDPZBlock <: SDPBlock
-    sdpcone::SDPCone.SDPConeT
-    dim::Int
-    blockj::Int
-end
-function get_array(x::SDPZBlock)
-    SDPCone.GetZArray(x.sdpcone, x.blockj - 1)
-end
-struct ZBlockMat <: BlockMat
-    optimizer::Optimizer
-end
-function block(z::ZBlockMat, i)
-    compute_z(z.optimizer)
-    if z.optimizer.blockdims[i] < 0
-        LPZBlock(z.optimizer.lpcone, abs(z.optimizer.blockdims[i]), z.optimizer.blk[i])
-    else
-        SDPZBlock(z.optimizer.sdpcone, z.optimizer.blockdims[i], z.optimizer.blk[i])
-    end
-end
-struct DualSlackMatrix <: MOI.AbstractModelAttribute end
-MOI.is_set_by_optimize(::DualSlackMatrix) = true
-MOI.get(optimizer::Optimizer, ::DualSlackMatrix) = ZBlockMat(optimizer)
 
 function block(optimizer::Optimizer, ci::MOI.ConstraintIndex{MOI.VectorOfVariables})
     return optimizer.varmap[ci.value][1]
