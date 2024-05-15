@@ -1,7 +1,7 @@
 name = "DSDP"
 uuid = "2714ae6b-e930-5b4e-9c21-d0bacf577842"
 repo = "https://github.com/jump-dev/DSDP.jl.git"
-version = "0.1.0"
+version = "0.2.0"
 
 [deps]
 DSDP_jll = "1065e140-e56c-5613-be8b-7480bf7138df"
