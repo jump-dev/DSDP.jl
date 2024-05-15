@@ -1,4 +1,3 @@
-DSDP.LogInfoAllow(3)
 function test_sdp_copy(tol)
     dsdp = DSDP.Create(1)
     sdpcone = DSDP.CreateSDPCone(dsdp, 1)
@@ -27,7 +26,7 @@ function test_sdp_copy(tol)
     @test DSDP.StopReason(dsdp) == 1
     @test DSDP.GetSolutionType(dsdp) == 1
     @test DSDP.GetDObjective(dsdp) ≈ 1 rtol = 1e-6
-    @show DSDP.GetPObjective(dsdp) ≈ 1 rtol = 1e-6
+    @test DSDP.GetPObjective(dsdp) ≈ 1 rtol = 1e-6
     DSDP.ComputeX(dsdp)
     @test DSDP.SDPCone.GetXArray(sdpcone, 0) ≈ [1, 0, 1, 1] rtol = 1e-6
 end
