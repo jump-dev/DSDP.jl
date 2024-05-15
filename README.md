@@ -67,3 +67,12 @@ List of supported model attributes:
 
  * [`MOI.ObjectiveSense()`](@ref)
 
+## Compile your own binaries
+
+In order to compile your own `libdsdp.so` to be used of DSDP.jl, use the following
+```sh
+OB_DIR=$(julia --project=. -e 'import OpenBLAS32_jll; println(OpenBLAS32_jll.OpenBLAS32_jll.artifact_dir)')
+OB="-L${LIBOB_DIR}/lib -lopenblas"
+make DSDPCFLAGS="-g -Wall -fPIC -DPIC" LAPACKBLAS="$OB" dsdplibrary
+make DSDPCFLAGS="-g -Wall -fPIC -DPIC" LAPACKBLAS="$OB" SH_LD="${CC} ${CFLAGS} -Wall -fPIC -DPIC -shared $OB" oshared
+```
