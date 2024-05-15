@@ -455,7 +455,6 @@ function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
     end
 
     Setup(dest.dsdp)
-    PrintData(dest.dsdp, dest.sdpcone, dest.lpcone)
 
     return index_map
 end
