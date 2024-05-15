@@ -1,3 +1,4 @@
+DSDP.LogInfoAllow(3)
 function test_sdp(tol)
     dsdp = DSDP.Create(1)
     sdpcone = DSDP.CreateSDPCone(dsdp, 1)
@@ -30,4 +31,6 @@ function test_sdp(tol)
     DSDP.ComputeX(dsdp)
     @test DSDP.SDPCone.GetXArray(sdpcone, 0) ≈ [1, 0, 1, 1] rtol = 1e-6
 end
-test_sdp(1e-6)
+@testset "SDP example" begin
+    test_sdp(1e-6)
+end
