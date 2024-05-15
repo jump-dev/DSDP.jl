@@ -39,8 +39,19 @@ function CreateBCone(dsdp::DSDPT)
     bcone[]
 end
 
+# Writes to `input.sdpa`
 function PrintData(dsdp::DSDPT, sdpcone::SDPCone.SDPConeT, lpcone::LPCone.LPConeT)
     @dsdp_ccall DSDPPrintData (DSDPT, SDPCone.SDPConeT, LPCone.LPConeT) dsdp sdpcone lpcone
+end
+
+function PrintSolution(fp::Libc.FILE,dsdp::DSDPT,sdpcone::SDPCone.SDPConeT,lpcone::LPCone.LPConeT)
+    @dsdp_ccall DSDPPrintSolution (Ptr{Cvoid}, DSDPT, SDPCone.SDPConeT, LPCone.LPConeT) fp dsdp sdpcone lpcone
+end
+
+function PrintSolution(dsdp::DSDPT,sdpcone::SDPCone.SDPConeT,lpcone::LPCone.LPConeT)
+    # See https://discourse.julialang.org/t/access-c-stdout-in-julia/24187/2
+    stdout = Libc.FILE(Libc.RawFD(1), "w")
+    return PrintSolution(stdout, dsdp, sdpcone, lpcone)
 end
 
 #function PrintSolution(arg1, arg2::DSDPT, arg3::SDPCone.SDPConeT, arg4::LPCone.LPConeT)
