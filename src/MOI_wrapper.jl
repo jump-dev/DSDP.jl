@@ -9,28 +9,42 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
     objective_constant::Cdouble
     objective_sign::Int
     b::Vector{Cdouble}
+
+    # List of block dimensions `d > 0`:
+    # * `-d` means a diagonal block with diagonal of length `d`
+    # * `d` means a symmetric `d x d` block
     blockdims::Vector{Int}
     varmap::Vector{Tuple{Int, Int, Int}} # Variable Index vi -> blk, i, j
+    # If `blockdims[i] < 0`, `blk[i]` is the offset in `lpdvars`.
+    # That is the **sum of length** of diagonal block before
+    # Otherwise, `blk[i]` is the **number** of SDP blocks before + 1
+    # and hence the index in `sdpdrows`, `sdpdcols` and `sdpdcoefs`.
     blk::Vector{Int}
     sdpcone::SDPCone.SDPConeT
+    # Sum of length of diagonal blocks
     nlpdrows::Int
     lpdvars::Vector{Int}
     lpdrows::Vector{Int}
     lpcoefs::Vector{Cdouble}
+    sdpdinds::Vector{Vector{Cint}}
+    sdpdcoefs::Vector{Vector{Cdouble}}
 
     x_computed::Bool
     y_valid::Bool
     y::Vector{Cdouble}
     z_computed::Bool
 
-    is_setup::Bool
-
     silent::Bool
     options::Dict{Symbol,Any}
     function Optimizer()
-        optimizer = new(C_NULL, C_NULL, 0.0, 1, Cdouble[], Int[], Tuple{Int, Int, Int}[], Int[], C_NULL, 0, Int[],
-                        Int[], Cdouble[], true, true, Cdouble[], true,
-                        false, false, Dict{Symbol, Any}())
+        optimizer = new(
+            C_NULL, C_NULL, 0.0, 1, Cdouble[], Int[],
+            Tuple{Int, Int, Int}[], Int[], C_NULL, 0,
+            Int[], Int[], Cdouble[],
+            Vector{Int}[], Vector{Cdouble}[],
+            true, true, Cdouble[], true,
+            false, Dict{Symbol, Any}(),
+        )
         finalizer(_free, optimizer)
         return optimizer
     end
@@ -58,12 +72,13 @@ function MOI.empty!(optimizer::Optimizer)
     empty!(optimizer.lpdvars)
     empty!(optimizer.lpdrows)
     empty!(optimizer.lpcoefs)
+    empty!(optimizer.sdpdinds)
+    empty!(optimizer.sdpdcoefs)
 
     optimizer.x_computed = false
     optimizer.y_valid = true
     empty!(optimizer.y)
     optimizer.z_computed = false
-    optimizer.is_setup = false
 end
 
 function MOI.is_empty(optimizer::Optimizer)
@@ -76,7 +91,9 @@ function MOI.is_empty(optimizer::Optimizer)
         iszero(optimizer.nlpdrows) &&
         isempty(optimizer.lpdvars) &&
         isempty(optimizer.lpdrows) &&
-        isempty(optimizer.lpcoefs)
+        isempty(optimizer.lpcoefs) &&
+        isempty(optimizer.sdpdinds) &&
+        isempty(optimizer.sdpdcoefs)
 end
 
 function _free(m::Optimizer)
@@ -169,13 +186,14 @@ for (param, default) in Iterators.flatten((options, gettable_options))
             get(options, $sym, $default)
         end
         function _call_set!(dsdp, ::$param, val)
+            println("$setter(dsdp, $val)")
             $setter(dsdp, val)
         end
     end
 end
 
 function MOI.supports(
-    optimizer::Optimizer,
+    ::Optimizer,
     ::Union{MOI.ObjectiveSense,
             MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Cdouble}}})
     return true
@@ -183,9 +201,7 @@ end
 
 MOI.supports_add_constrained_variables(::Optimizer, ::Type{MOI.Reals}) = false
 const SupportedSets = Union{MOI.Nonnegatives, MOI.PositiveSemidefiniteConeTriangle}
-# TODO positive semidefinite matrix variables not supported yet in linear equality constraints
-#MOI.supports_add_constrained_variables(::Optimizer, ::Type{<:SupportedSets}) = true
-MOI.supports_add_constrained_variables(::Optimizer, ::Type{<:MOI.Nonnegatives}) = true
+MOI.supports_add_constrained_variables(::Optimizer, ::Type{<:SupportedSets}) = true
 function MOI.supports_constraint(
     ::Optimizer, ::Type{MOI.ScalarAffineFunction{Cdouble}},
     ::Type{MOI.EqualTo{Cdouble}})
@@ -203,8 +219,8 @@ end
 function new_block(optimizer::Optimizer, set::MOI.PositiveSemidefiniteConeTriangle)
     push!(optimizer.blockdims, set.side_dimension)
     blk = length(optimizer.blockdims)
-    for i in 1:set.side_dimension
-        for j in 1:i
+    for j in 1:set.side_dimension
+        for i in 1:j
             push!(optimizer.varmap, (blk, i, j))
         end
     end
@@ -259,11 +275,13 @@ end
 function _setcoefficient!(m::Optimizer, coef, constr::Integer, blk::Integer, i::Integer, j::Integer)
     if m.blockdims[blk] < 0
         @assert i == j
-        push!(m.lpdvars, constr+1)
+        push!(m.lpdvars, constr + 1)
         push!(m.lpdrows, m.blk[blk] + i - 1) # -1 because indexing starts at 0 in DSDP
         push!(m.lpcoefs, coef)
     else
-        error("Positive semidefinite matrix variables are not supported yet so only linear programs are supported at the moment.")
+        sdp = m.blk[blk]
+        push!(m.sdpdinds[sdp], i + (j - 1) * m.blockdims[blk] - 1)
+        push!(m.sdpdcoefs[sdp], coef / 2)
     end
 end
 
@@ -271,10 +289,16 @@ end
 function load_objective_term!(optimizer::Optimizer, index_map, α, vi::MOI.VariableIndex)
     blk, i, j = varmap(optimizer, vi)
     coef = optimizer.objective_sign * α
-    if i != j
-        coef /= 2
-    end
     _setcoefficient!(optimizer, coef, 0, blk, i, j)
+end
+
+function _set_A_matrices(m::Optimizer, i)
+    for (blk, blkdim) in zip(m.blk, m.blockdims)
+        if blkdim > 0
+            println("DSDP.SDPCone.SetASparseVecMat(sdpcone, $(blk - 1), $i, $blkdim, 1.0, 0, $(m.sdpdinds[blk]), $(m.sdpdcoefs[blk]), $(length(m.sdpdcoefs[blk])))")
+            SDPCone.SetASparseVecMat(m.sdpcone, blk - 1, i, blkdim, 1.0, 0, m.sdpdinds[blk], m.sdpdcoefs[blk], length(m.sdpdcoefs[blk]))
+        end
+    end
 end
 
 # Largely inspired from CSDP.jl
@@ -305,31 +329,48 @@ function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
 
     _free(dest)
     dest.nlpdrows = 0
-    sdpidx = 0
     dest.blk = similar(dest.blockdims)
     for i in 1:length(dest.blockdims)
         if dest.blockdims[i] < 0
             dest.blk[i] = dest.nlpdrows
             dest.nlpdrows -= dest.blockdims[i]
         else
-            sdpidx += 1
-            dest.blk[i] = sdpidx
+            push!(dest.sdpdinds, Int[])
+            push!(dest.sdpdcoefs, Cdouble[])
+            dest.blk[i] = length(dest.sdpdcoefs)
         end
     end
     dest.lpdvars = Int[]
     dest.lpdrows = Int[]
     dest.lpcoefs = Cdouble[]
 
+    println("dsdp = DSDP.Create($(length(dest.b)))")
     dest.dsdp = Create(length(dest.b))
     for (option, value) in dest.options
         options_setters[option](dest.dsdp, value)
     end
 
-    # TODO only create if necessary
-    dest.sdpcone = CreateSDPCone(dest.dsdp, length(dest.blockdims))
+    if !isempty(dest.sdpdcoefs)
+        println("sdpcone = DSDP.CreateSDPCone(dsdp, $(length(dest.sdpdcoefs)))")
+        dest.sdpcone = CreateSDPCone(dest.dsdp, length(dest.sdpdcoefs))
+        for i in eachindex(dest.blockdims)
+            if dest.blockdims[i] < 0
+                continue
+            end
+            blk = dest.blk[i]
+            println("DSDP.SDPCone.SetBlockSize(sdpcone, $(blk - 1), $(dest.blockdims[i]))")
+            SDPCone.SetBlockSize(dest.sdpcone, blk - 1, dest.blockdims[i])
+            # TODO what does this `0` mean ?
+            println("DSDP.SDPCone.SetSparsity(sdpcone, $(blk - 1), 0)")
+            SDPCone.SetSparsity(dest.sdpcone, blk - 1, 0)
+            println("DSDP.SDPCone.SetStorageFormat(sdpcone, $(blk - 1), UInt8('U'))")
+            SDPCone.SetStorageFormat(dest.sdpcone, blk - 1, UInt8('U'))
+        end
+    end
     for constr in eachindex(dest.b)
         # TODO in examples/readsdpa.c line 162,
         # -0.0 is used instead of 0.0 if the dual obj is <= 0., check if it has impact
+        println("DSDP.SetY0(dsdp, $constr, 0.0)")
         SetY0(dest.dsdp, constr, 0.0)
     end
     # TODO ComputeY0 as in examples/readsdpa.c
@@ -349,17 +390,19 @@ function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
                 ),
             )
         end
+        println("DSDP.SetDualObjective(dsdp, $k, $(MOI.constant(set)))")
         SetDualObjective(dest.dsdp, k, MOI.constant(set))
+        for k in eachindex(dest.sdpdcoefs)
+            empty!(dest.sdpdinds[k])
+            empty!(dest.sdpdcoefs[k])
+        end
         for t in func.terms
             if !iszero(t.coefficient)
                 blk, i, j = varmap(dest, index_map[t.variable])
-                coef = t.coefficient
-                if i != j
-                    coef /= 2
-                end
-                _setcoefficient!(dest, coef, k, blk, i, j)
+                _setcoefficient!(dest, t.coefficient, k, blk, i, j)
             end
         end
+        _set_A_matrices(dest, k)
         dest.b[k] = MOI.constant(set)
         index_map[ci_src] = AFFEQ(k)
     end
@@ -386,6 +429,10 @@ function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
         func = MOI.get(src, MOI.ObjectiveFunction{AFF}())
         obj = MOI.Utilities.canonical(func)
         dest.objective_constant = obj.constant
+        for k in eachindex(dest.sdpdcoefs)
+            empty!(dest.sdpdinds[k])
+            empty!(dest.sdpdcoefs[k])
+        end
         for term in obj.terms
             if !iszero(term.coefficient)
                 load_objective_term!(
@@ -396,24 +443,25 @@ function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
                 )
             end
         end
+        _set_A_matrices(dest, 0)
     end
+
+    # Pass info to `dest.dsdp`
+    if !isempty(dest.lpdvars)
+        println("lpcone = DSDP.CreateLPCone(dsdp)")
+        dest.lpcone = CreateLPCone(dest.dsdp)
+        println("DSDP.LPCone.SetDataSparse(lpcone, $(dest.nlpdrows), $(length(dest.b) + 1), $(dest.lpdvars), $(dest.lpdrows), $(dest.lpcoefs))")
+        LPCone.SetDataSparse(dest.lpcone, dest.nlpdrows, length(dest.b) + 1, dest.lpdvars, dest.lpdrows, dest.lpcoefs)
+    end
+
+    println("DSDP.Setup(dsdp)")
+    Setup(dest.dsdp)
 
     return index_map
 end
 
 function MOI.optimize!(m::Optimizer)
-    # TODO in MOI v0.10, remove the `is_setup` flag
-    #      and do this in `MOI.Utilities.final_touch`.
-    if !m.is_setup
-        if !isempty(m.lpdvars)
-            m.lpcone = CreateLPCone(m.dsdp)
-            LPCone.SetDataSparse(m.lpcone, m.nlpdrows, length(m.b) + 1, m.lpdvars, m.lpdrows, m.lpcoefs)
-        end
-
-        Setup(m.dsdp)
-        m.is_setup = true
-    end
-
+    println("DSDP.Solve(dsdp)")
     Solve(m.dsdp)
 
     m.x_computed = false
@@ -434,6 +482,7 @@ function MOI.get(m::Optimizer, ::MOI.RawStatusString)
     if m.dsdp == C_NULL
         return "`optimize!` not called"
     end
+    println("@show DSDP.StopReason(dsdp)")
     status = StopReason(m.dsdp)
     compute_x(m)
     if status == DSDP_CONVERGED
@@ -463,6 +512,7 @@ function MOI.get(m::Optimizer, ::MOI.TerminationStatus)
     if m.dsdp == C_NULL
         return MOI.OPTIMIZE_NOT_CALLED
     end
+    println("@show DSDP.StopReason(dsdp)")
     status = StopReason(m.dsdp)
     compute_x(m)
     if status == DSDP_CONVERGED
@@ -504,6 +554,7 @@ function MOI.get(m::Optimizer, attr::MOI.PrimalStatus)
         return MOI.NO_SOLUTION
     end
     compute_x(m)
+    println("@show DSDP.GetSolutionType(dsdp)")
     status = GetSolutionType(m.dsdp)
     if status == DSDP_PDUNKNOWN
         return MOI.UNKNOWN_RESULT_STATUS
@@ -523,6 +574,7 @@ function MOI.get(m::Optimizer, attr::MOI.DualStatus)
         return MOI.NO_SOLUTION
     end
     compute_x(m)
+    println("@show DSDP.GetSolutionType(dsdp)")
     status = GetSolutionType(m.dsdp)
     if status == DSDP_PDUNKNOWN
         return MOI.UNKNOWN_RESULT_STATUS
@@ -540,20 +592,32 @@ end
 MOI.get(m::Optimizer, ::MOI.ResultCount) = m.dsdp == C_NULL ? 0 : 1
 function MOI.get(m::Optimizer, attr::MOI.ObjectiveValue)
     MOI.check_result_index_bounds(m, attr)
+    println("@show DSDP.GetPPObjective(dsdp)")
+    @show DSDP.GetPPObjective(m.dsdp)
     return m.objective_sign * GetPPObjective(m.dsdp) + m.objective_constant
 end
 function MOI.get(m::Optimizer, attr::MOI.DualObjectiveValue)
     MOI.check_result_index_bounds(m, attr)
+    println("@show DSDP.GetDDObjective(dsdp)")
+    @show DSDP.GetDDObjective(m.dsdp)
     return m.objective_sign * GetDDObjective(m.dsdp) + m.objective_constant
 end
 
 abstract type LPBlock <: AbstractMatrix{Cdouble} end
-Base.size(x::LPBlock) = (x.dim, x.dim)
+abstract type SDPBlock <: AbstractMatrix{Cdouble} end
+Base.size(x::Union{LPBlock,SDPBlock}) = (x.dim, x.dim)
 function Base.getindex(x::LPBlock, i, j)
     if i == j
         return get_array(x)[x.offset + i]
     else
         return zero(Cdouble)
+    end
+end
+function Base.getindex(x::SDPBlock, i, j)
+    if i > j
+        return getindex(x, j, i)
+    else
+        return get_array(x)[MOI.Utilities.trimap(i, j)]
     end
 end
 
@@ -562,26 +626,47 @@ abstract type BlockMat <: AbstractBlockMatrix{Cdouble} end
 nblocks(x::BlockMat) = length(x.optimizer.blk)
 
 function compute_x(m::Optimizer)
-    if !m.x_computed
+    #if !m.x_computed
         @assert m.dsdp != C_NULL
+        println("DSDP.ComputeX(dsdp)")
         ComputeX(m.dsdp)
         m.x_computed = true
         m.z_computed = false
-    end
+    #end
 end
 struct LPXBlock <: LPBlock
     lpcone::LPCone.LPConeT
     dim::Int
     offset::Int
 end
-get_array(x::LPXBlock) = LPCone.GetXArray(x.lpcone)
+function get_array(x::LPXBlock)
+    println("@show DSDP.LPCone.GetXArray(lpcone)")
+    LPCone.GetXArray(x.lpcone)
+end
+struct SDPXBlock <: SDPBlock
+    sdpcone::SDPCone.SDPConeT
+    dim::Int
+    blockj::Int
+end
+#get_array(x::SDPXBlock) = SDPCone.GetXArray(x.sdpcone, x.blockj - 1)
+function get_array(x::SDPXBlock)
+    println("@show DSDP.SDPCone.ComputeX(sdpcone, $(x.blockj - 1), $(x.dim), $(div(x.dim * (x.dim + 1), 2)))")
+    #DSDP.ComputeX(dsdp)
+    v = SDPCone.GetXArray(x.sdpcone, x.blockj - 1)
+    @show v
+    return [v[i + (j - 1) * x.dim] for j in 1:x.dim for i in 1:j]
+    #SDPCone.ComputeX(x.sdpcone, x.blockj - 1, x.dim, div(x.dim * (x.dim + 1), 2))
+end
 struct XBlockMat <: BlockMat
     optimizer::Optimizer
 end
 function block(x::XBlockMat, i)
     compute_x(x.optimizer)
-    @assert x.optimizer.blockdims[i] < 0
-    LPXBlock(x.optimizer.lpcone, abs(x.optimizer.blockdims[i]), x.optimizer.blk[i])
+    if x.optimizer.blockdims[i] < 0
+        LPXBlock(x.optimizer.lpcone, abs(x.optimizer.blockdims[i]), x.optimizer.blk[i])
+    else
+        SDPXBlock(x.optimizer.sdpcone, x.optimizer.blockdims[i], x.optimizer.blk[i])
+    end
 end
 struct PrimalSolutionMatrix <: MOI.AbstractModelAttribute end
 MOI.is_set_by_optimize(::PrimalSolutionMatrix) = true
@@ -592,6 +677,7 @@ MOI.is_set_by_optimize(::DualSolutionVector) = true
 function MOI.get(optimizer::Optimizer, ::DualSolutionVector)
     if !optimizer.y_valid
         optimizer.y = Vector{Cdouble}(undef, length(optimizer.b))
+        println("@show DSDP.GetY(dsdp, $(optimizer.y))")
         GetY(optimizer.dsdp, optimizer.y)
         map!(-, optimizer.y, optimizer.y) # The primal objective is Max in SDOI but Min in DSDP
     end
@@ -601,6 +687,7 @@ end
 function compute_z(m::Optimizer)
     if !m.z_computed
         GC.@preserve m begin
+            println("DSDP.ComputeAndFactorS(dsdp)")
             ComputeAndFactorS(m.dsdp)
         end
         m.z_computed = true
@@ -611,14 +698,29 @@ struct LPZBlock <: LPBlock
     dim::Int
     offset::Int
 end
-get_array(z::LPZBlock) = LPCone.GetSArray(z.lpcone)
+function get_array(z::LPZBlock)
+    println("@show DSDP.LPCone.GetSArray(lpcone)")
+    LPCone.GetSArray(z.lpcone)
+end
+struct SDPZBlock <: SDPBlock
+    sdpcone::SDPCone.SDPConeT
+    dim::Int
+    blockj::Int
+end
+function get_array(x::SDPZBlock)
+    println("@show DSDP.SDPCone.GetZArray(sdpcone, $(x.blockj - 1))")
+    SDPCone.GetZArray(x.sdpcone, x.blockj - 1)
+end
 struct ZBlockMat <: BlockMat
     optimizer::Optimizer
 end
 function block(z::ZBlockMat, i)
     compute_z(z.optimizer)
-    @assert z.optimizer.blockdims[i] < 0
-    LPZBlock(z.optimizer.lpcone, abs(z.optimizer.blockdims[i]), z.optimizer.blk[i])
+    if z.optimizer.blockdims[i] < 0
+        LPZBlock(z.optimizer.lpcone, abs(z.optimizer.blockdims[i]), z.optimizer.blk[i])
+    else
+        SDPZBlock(z.optimizer.sdpcone, z.optimizer.blockdims[i], z.optimizer.blk[i])
+    end
 end
 struct DualSlackMatrix <: MOI.AbstractModelAttribute end
 MOI.is_set_by_optimize(::DualSlackMatrix) = true
@@ -627,10 +729,10 @@ MOI.get(optimizer::Optimizer, ::DualSlackMatrix) = ZBlockMat(optimizer)
 function block(optimizer::Optimizer, ci::MOI.ConstraintIndex{MOI.VectorOfVariables})
     return optimizer.varmap[ci.value][1]
 end
-function vectorize_block(M, blk::Integer, s::Type{MOI.Nonnegatives})
+function vectorize_block(M, blk::Integer, ::Type{MOI.Nonnegatives})
     return diag(block(M, blk))
 end
-function vectorize_block(M::AbstractMatrix{Cdouble}, blk::Integer, s::Type{MOI.PositiveSemidefiniteConeTriangle})
+function vectorize_block(M::AbstractMatrix{Cdouble}, blk::Integer, ::Type{MOI.PositiveSemidefiniteConeTriangle})
     B = block(M, blk)
     d = LinearAlgebra.checksquare(B)
     n = MOI.dimension(MOI.PositiveSemidefiniteConeTriangle(d))
@@ -649,6 +751,7 @@ end
 function MOI.get(optimizer::Optimizer, attr::MOI.VariablePrimal, vi::MOI.VariableIndex)
     MOI.check_result_index_bounds(optimizer, attr)
     blk, i, j = varmap(optimizer, vi)
+    compute_x(optimizer)
     return block(MOI.get(optimizer, PrimalSolutionMatrix()), blk)[i, j]
 end
 
@@ -658,11 +761,11 @@ function MOI.get(optimizer::Optimizer, attr::MOI.ConstraintPrimal,
     return vectorize_block(MOI.get(optimizer, PrimalSolutionMatrix()), block(optimizer, ci), S)
 end
 
-function MOI.get(optimizer::Optimizer, attr::MOI.ConstraintDual,
-                 ci::MOI.ConstraintIndex{MOI.VectorOfVariables, S}) where S<:SupportedSets
-    MOI.check_result_index_bounds(optimizer, attr)
-    return vectorize_block(MOI.get(optimizer, DualSlackMatrix()), block(optimizer, ci), S)
-end
+#function MOI.get(optimizer::Optimizer, attr::MOI.ConstraintDual,
+#                 ci::MOI.ConstraintIndex{MOI.VectorOfVariables, S}) where S<:SupportedSets
+#    MOI.check_result_index_bounds(optimizer, attr)
+#    return vectorize_block(MOI.get(optimizer, DualSlackMatrix()), block(optimizer, ci), S)
+#end
 function MOI.get(optimizer::Optimizer, attr::MOI.ConstraintDual, ci::AFFEQ)
     MOI.check_result_index_bounds(optimizer, attr)
     return -MOI.get(optimizer, DualSolutionVector())[ci.value]
