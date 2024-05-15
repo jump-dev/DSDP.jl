@@ -26,8 +26,10 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
     lpdvars::Vector{Int}
     lpdrows::Vector{Int}
     lpcoefs::Vector{Cdouble}
-    sdpdinds::Vector{Vector{Cint}}
-    sdpdcoefs::Vector{Vector{Cdouble}}
+    # DSDP does not create its own copy of these vectors so we must absolutely have different ones
+    # for each matrix
+    sdpdinds::Vector{Vector{Vector{Cint}}}
+    sdpdcoefs::Vector{Vector{Vector{Cdouble}}}
 
     x_computed::Bool
     y_valid::Bool
@@ -98,7 +100,7 @@ end
 
 function _free(m::Optimizer)
     if m.dsdp != C_NULL
-        Destroy(m.dsdp)
+        #Destroy(m.dsdp)
         m.dsdp = C_NULL
         m.lpcone = C_NULL
         m.sdpcone = C_NULL
@@ -280,8 +282,13 @@ function _setcoefficient!(m::Optimizer, coef, constr::Integer, blk::Integer, i::
         push!(m.lpcoefs, coef)
     else
         sdp = m.blk[blk]
-        push!(m.sdpdinds[sdp], i + (j - 1) * m.blockdims[blk] - 1)
-        push!(m.sdpdcoefs[sdp], coef / 2)
+        @show m.sdpdinds
+        @show m.sdpdinds[end]
+        push!(m.sdpdinds[end][sdp], i + (j - 1) * m.blockdims[blk] - 1)
+        if i != j
+            coef /= 2
+        end
+        push!(m.sdpdcoefs[end][sdp], coef)
     end
 end
 
@@ -295,10 +302,21 @@ end
 function _set_A_matrices(m::Optimizer, i)
     for (blk, blkdim) in zip(m.blk, m.blockdims)
         if blkdim > 0
-            println("DSDP.SDPCone.SetASparseVecMat(sdpcone, $(blk - 1), $i, $blkdim, 1.0, 0, $(m.sdpdinds[blk]), $(m.sdpdcoefs[blk]), $(length(m.sdpdcoefs[blk])))")
-            SDPCone.SetASparseVecMat(m.sdpcone, blk - 1, i, blkdim, 1.0, 0, m.sdpdinds[blk], m.sdpdcoefs[blk], length(m.sdpdcoefs[blk]))
+            SDPCone.SetASparseVecMat(m.sdpcone, blk - 1, i, blkdim, 1.0, 0, m.sdpdinds[end][blk], m.sdpdcoefs[end][blk], length(m.sdpdcoefs[end][blk]))
         end
     end
+end
+
+function _new_A_matrix(m::Optimizer)
+    push!(m.sdpdinds, Vector{Cint}[])
+    push!(m.sdpdcoefs, Vector{Cdouble}[])
+    for i in eachindex(m.blockdims)
+        if m.blockdims[i] >= 0
+            push!(m.sdpdinds[end], Cint[])
+            push!(m.sdpdcoefs[end], Cdouble[])
+        end
+    end
+    return
 end
 
 # Largely inspired from CSDP.jl
@@ -329,15 +347,16 @@ function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
 
     _free(dest)
     dest.nlpdrows = 0
-    dest.blk = similar(dest.blockdims)
+    dest.blk = zero(dest.blockdims)
+    num_sdp = 0
     for i in 1:length(dest.blockdims)
+        @show dest.blockdims[i]
         if dest.blockdims[i] < 0
             dest.blk[i] = dest.nlpdrows
             dest.nlpdrows -= dest.blockdims[i]
         else
-            push!(dest.sdpdinds, Int[])
-            push!(dest.sdpdcoefs, Cdouble[])
-            dest.blk[i] = length(dest.sdpdcoefs)
+            num_sdp += 1
+            dest.blk[i] = num_sdp
         end
     end
     dest.lpdvars = Int[]
@@ -347,13 +366,15 @@ function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
     println("dsdp = DSDP.Create($(length(dest.b)))")
     dest.dsdp = Create(length(dest.b))
     for (option, value) in dest.options
+        @show option, value
         options_setters[option](dest.dsdp, value)
     end
 
-    if !isempty(dest.sdpdcoefs)
-        println("sdpcone = DSDP.CreateSDPCone(dsdp, $(length(dest.sdpdcoefs)))")
-        dest.sdpcone = CreateSDPCone(dest.dsdp, length(dest.sdpdcoefs))
+    if !iszero(num_sdp)
+        println("sdpcone = DSDP.CreateSDPCone(dsdp, $num_sdp)")
+        dest.sdpcone = CreateSDPCone(dest.dsdp, num_sdp)
         for i in eachindex(dest.blockdims)
+            @show dest.blockdims[i]
             if dest.blockdims[i] < 0
                 continue
             end
@@ -392,10 +413,7 @@ function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
         end
         println("DSDP.SetDualObjective(dsdp, $k, $(MOI.constant(set)))")
         SetDualObjective(dest.dsdp, k, MOI.constant(set))
-        for k in eachindex(dest.sdpdcoefs)
-            empty!(dest.sdpdinds[k])
-            empty!(dest.sdpdcoefs[k])
-        end
+        _new_A_matrix(dest)
         for t in func.terms
             if !iszero(t.coefficient)
                 blk, i, j = varmap(dest, index_map[t.variable])
@@ -429,10 +447,7 @@ function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
         func = MOI.get(src, MOI.ObjectiveFunction{AFF}())
         obj = MOI.Utilities.canonical(func)
         dest.objective_constant = obj.constant
-        for k in eachindex(dest.sdpdcoefs)
-            empty!(dest.sdpdinds[k])
-            empty!(dest.sdpdcoefs[k])
-        end
+        _new_A_matrix(dest)
         for term in obj.terms
             if !iszero(term.coefficient)
                 load_objective_term!(
@@ -456,6 +471,7 @@ function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
 
     println("DSDP.Setup(dsdp)")
     Setup(dest.dsdp)
+    PrintData(dest.dsdp, dest.sdpcone, dest.lpcone)
 
     return index_map
 end
@@ -475,6 +491,16 @@ function MOI.optimize!(m::Optimizer)
     # and
     # https://github.com/JuliaOpt/SCS.jl/pull/91
     compute_x(m)
+    @show SDPCone.GetXArray(m.sdpcone, 0)
+    PrintSolution(m.dsdp, m.sdpcone, m.lpcone)
+    @show GetIts(m.dsdp)
+    @show GetFinalErrors(m.dsdp)
+    @show StopReason(m.dsdp)
+    @show GetSolutionType(m.dsdp)
+    @show GetDObjective(m.dsdp)
+    @show GetPObjective(m.dsdp)
+    @show SDPCone.GetXArray(m.sdpcone, 0)
+
     compute_z(m)
 end
 
@@ -484,7 +510,7 @@ function MOI.get(m::Optimizer, ::MOI.RawStatusString)
     end
     println("@show DSDP.StopReason(dsdp)")
     status = StopReason(m.dsdp)
-    compute_x(m)
+    #compute_x(m)
     if status == DSDP_CONVERGED
         return "Converged"
     elseif status == DSDP_INFEASIBLE_START
@@ -514,7 +540,7 @@ function MOI.get(m::Optimizer, ::MOI.TerminationStatus)
     end
     println("@show DSDP.StopReason(dsdp)")
     status = StopReason(m.dsdp)
-    compute_x(m)
+    #compute_x(m)
     if status == DSDP_CONVERGED
         sol_status = GetSolutionType(m.dsdp)
         if sol_status == DSDP_PDFEASIBLE
@@ -553,7 +579,7 @@ function MOI.get(m::Optimizer, attr::MOI.PrimalStatus)
     if attr.result_index > MOI.get(m, MOI.ResultCount())
         return MOI.NO_SOLUTION
     end
-    compute_x(m)
+    #compute_x(m)
     println("@show DSDP.GetSolutionType(dsdp)")
     status = GetSolutionType(m.dsdp)
     if status == DSDP_PDUNKNOWN
@@ -573,7 +599,7 @@ function MOI.get(m::Optimizer, attr::MOI.DualStatus)
     if attr.result_index > MOI.get(m, MOI.ResultCount())
         return MOI.NO_SOLUTION
     end
-    compute_x(m)
+    #compute_x(m)
     println("@show DSDP.GetSolutionType(dsdp)")
     status = GetSolutionType(m.dsdp)
     if status == DSDP_PDUNKNOWN
@@ -650,8 +676,9 @@ struct SDPXBlock <: SDPBlock
 end
 #get_array(x::SDPXBlock) = SDPCone.GetXArray(x.sdpcone, x.blockj - 1)
 function get_array(x::SDPXBlock)
-    println("@show DSDP.SDPCone.ComputeX(sdpcone, $(x.blockj - 1), $(x.dim), $(div(x.dim * (x.dim + 1), 2)))")
+    #println("@show DSDP.SDPCone.ComputeX(sdpcone, $(x.blockj - 1), $(x.dim), $(div(x.dim * (x.dim + 1), 2)))")
     #DSDP.ComputeX(dsdp)
+    println("@show DSDP.SDPCone.GetXArray(sdpcone, $(x.blockj - 1))")
     v = SDPCone.GetXArray(x.sdpcone, x.blockj - 1)
     @show v
     return [v[i + (j - 1) * x.dim] for j in 1:x.dim for i in 1:j]
@@ -661,7 +688,7 @@ struct XBlockMat <: BlockMat
     optimizer::Optimizer
 end
 function block(x::XBlockMat, i)
-    compute_x(x.optimizer)
+    #compute_x(x.optimizer)
     if x.optimizer.blockdims[i] < 0
         LPXBlock(x.optimizer.lpcone, abs(x.optimizer.blockdims[i]), x.optimizer.blk[i])
     else
@@ -688,7 +715,7 @@ function compute_z(m::Optimizer)
     if !m.z_computed
         GC.@preserve m begin
             println("DSDP.ComputeAndFactorS(dsdp)")
-            ComputeAndFactorS(m.dsdp)
+            #ComputeAndFactorS(m.dsdp)
         end
         m.z_computed = true
     end
@@ -751,7 +778,6 @@ end
 function MOI.get(optimizer::Optimizer, attr::MOI.VariablePrimal, vi::MOI.VariableIndex)
     MOI.check_result_index_bounds(optimizer, attr)
     blk, i, j = varmap(optimizer, vi)
-    compute_x(optimizer)
     return block(MOI.get(optimizer, PrimalSolutionMatrix()), blk)[i, j]
 end
 

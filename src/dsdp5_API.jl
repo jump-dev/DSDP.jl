@@ -1,7 +1,6 @@
 # Julia wrapper for header: include/dsdp5.h
 # Automatically generated using Clang.jl wrap_c, version 0.0.0
 
-
 function LogInfoAllow(i::Integer)
     @dsdp_ccall DSDPLogInfoAllow (Cint, Ptr{Cchar}) i C_NULL
 end
@@ -274,8 +273,10 @@ function UseLAPACKForSchur(dsdp::DSDPT, arg2::Integer)
     @dsdp_ccall DSDPUseLAPACKForSchur (DSDPT, Cint) dsdp arg2
 end
 
-function GetNumberOfVariables(dsdp::DSDPT, arg2::Vector{Cint})
-    @dsdp_ccall DSDPGetNumberOfVariables (DSDPT, Ptr{Cint}) dsdp arg2
+function GetNumberOfVariables(dsdp::DSDPT)
+    n = Ref{Cint}(0)
+    @dsdp_ccall DSDPGetNumberOfVariables (DSDPT, Ref{Cint}) dsdp n
+    return n[]
 end
 
 function GetFinalErrors(dsdp::DSDPT)

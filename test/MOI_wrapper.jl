@@ -1,10 +1,9 @@
 module TestDSDP
 
 using Test
-using MathOptInterface
+import MathOptInterface as MOI
 import DSDP
 
-const MOI = MathOptInterface
 
 function runtests()
     for name in names(@__MODULE__; all = true)
