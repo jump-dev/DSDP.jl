@@ -154,6 +154,7 @@ function test_runtests()
             r"test_conic_SecondOrderCone_nonnegative_initial_bound$",
             r"test_quadratic_constraint_integration$",
             r"test_linear_variable_open_intervals$",
+            r"test_conic_SecondOrderCone_out_of_order$",
         ],
     )
     return
