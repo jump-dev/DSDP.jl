@@ -95,28 +95,8 @@ function SetADenseVecMat(
     ) sdpcone arg2 arg3 arg4 arg5 arg6 arg7
 end
 
-function SetARankOneMat(
-    sdpcone::SDPConeT,
-    arg2::Integer,
-    arg3::Integer,
-    arg4::Integer,
-    arg5::Cdouble,
-    arg6::Integer,
-    arg7::Vector{Cint},
-    arg8::Vector{Cdouble},
-    arg9::Integer,
-)
-    @dsdp_ccall SDPConeSetARankOneMat (
-        SDPConeT,
-        Cint,
-        Cint,
-        Cint,
-        Cdouble,
-        Cint,
-        Ptr{Cint},
-        Ptr{Cdouble},
-        Cint,
-    ) sdpcone arg2 arg3 arg4 arg5 arg6 arg7 arg8 arg9
+function SetARankOneMat(sdpcone::SDPConeT, blockj::Integer, vari::Integer, n::Integer, alpha::Cdouble, ishift::Integer, ind::Vector{Cint}, val::Vector{Cdouble}, nnz::Integer)
+    @dsdp_ccall SDPConeSetARankOneMat (SDPConeT, Cint, Cint, Cint, Cdouble, Cint, Ptr{Cint}, Ptr{Cdouble}, Cint) sdpcone blockj vari n alpha ishift ind val nnz
 end
 
 function SetConstantMat(
@@ -220,28 +200,8 @@ function AddIdentity(
     @dsdp_ccall SDPConeAddIdentity (SDPConeT, Cint, Cint, Cint, Cdouble) sdpcone arg2 arg3 arg4 arg5
 end
 
-function AddARankOneMat(
-    sdpcone::SDPConeT,
-    arg2::Integer,
-    arg3::Integer,
-    arg4::Integer,
-    arg5::Cdouble,
-    arg6::Integer,
-    arg7::Vector{Cint},
-    arg8::Vector{Cdouble},
-    arg9::Integer,
-)
-    @dsdp_ccall SDPConeAddARankOneMat (
-        SDPConeT,
-        Cint,
-        Cint,
-        Cint,
-        Cdouble,
-        Cint,
-        Ptr{Cint},
-        Ptr{Cdouble},
-        Cint,
-    ) sdpcone arg2 arg3 arg4 arg5 arg6 arg7 arg8 arg9
+function AddARankOneMat(sdpcone::SDPConeT, blockj::Integer, vari::Integer, n::Integer, alpha::Cdouble, ishift::Integer, ind::Vector{Cint}, val::Vector{Cdouble}, nnz::Integer)
+    @dsdp_ccall SDPConeAddARankOneMat (SDPConeT, Cint, Cint, Cint, Cdouble, Cint, Ptr{Cint}, Ptr{Cdouble}, Cint) sdpcone blockj vari n alpha ishift ind val nnz
 end
 
 function AddSparseVecMat(
