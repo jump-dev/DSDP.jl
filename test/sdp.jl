@@ -14,7 +14,17 @@ function test_sdp(tol = 1e-6)
     DSDP.SetY0(dsdp, 1, 0.0)
     DSDP.SetDualObjective(dsdp, 1, 1.0)
     DSDP.SDPCone.SetASparseVecMat(sdpcone, 0, 1, 2, 1.0, 0, Int32[2], [0.5], 1)
-    DSDP.SDPCone.SetASparseVecMat(sdpcone, 0, 0, 2, 1.0, 0, Int32[0, 3], [1.0, 1.0], 2)
+    DSDP.SDPCone.SetASparseVecMat(
+        sdpcone,
+        0,
+        0,
+        2,
+        1.0,
+        0,
+        Int32[0, 3],
+        [1.0, 1.0],
+        2,
+    )
     DSDP.Setup(dsdp)
     DSDP.Solve(dsdp)
     DSDP.ComputeX(dsdp)
@@ -47,15 +57,14 @@ import MathOptInterface as MOI
 
 function test_moi(tol = 1e-6)
     model = MOI.Utilities.Model{Float64}()
-    X, _ = MOI.add_constrained_variables(model, MOI.PositiveSemidefiniteConeTriangle(2))
+    X, _ = MOI.add_constrained_variables(
+        model,
+        MOI.PositiveSemidefiniteConeTriangle(2),
+    )
     c = MOI.add_constraint(model, 1.0 * X[2], MOI.EqualTo(1.0))
     obj = 1.0 * X[1] + 1.0 * X[3]
     MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)
-    MOI.set(
-        model,
-        MOI.ObjectiveFunction{typeof(obj)}(),
-        obj,
-    )
+    MOI.set(model, MOI.ObjectiveFunction{typeof(obj)}(), obj)
     dsdp = DSDP.Optimizer()
     MOI.copy_to(dsdp, model)
     MOI.optimize!(dsdp)

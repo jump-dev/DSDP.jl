@@ -26,28 +26,64 @@ function buildlp(nvars, lpdvars, lpdrows, lpcoefs)
     row = Vector{Cint}(undef, n)
     aval = Vector{Cdouble}(undef, n)
     for var in 1:nvars
-        sort!(idx[var], by=i->lpdrows[i])
+        sort!(idx[var]; by = i -> lpdrows[i])
         row[(nnzin[var]+1):(nnzin[var+1])] = lpdrows[idx[var]]
         aval[(nnzin[var]+1):(nnzin[var+1])] = lpcoefs[idx[var]]
     end
-    nnzin, row, aval
+    return nnzin, row, aval
 end
 
 # This function is not part of DSDP API
-function SetDataSparse(lpcone::LPConeT, n::Integer, nvars, lpdvars, lpdrows, lpcoefs)
-    SetData(lpcone, n, buildlp(nvars, lpdvars, lpdrows, lpcoefs)...)
+function SetDataSparse(
+    lpcone::LPConeT,
+    n::Integer,
+    nvars,
+    lpdvars,
+    lpdrows,
+    lpcoefs,
+)
+    return SetData(lpcone, n, buildlp(nvars, lpdvars, lpdrows, lpcoefs)...)
 end
 
-function SetData(lpcone::LPConeT, n::Integer, nnzin::Vector{Cint}, row::Vector{Cint}, aval::Vector{Cdouble})
+function SetData(
+    lpcone::LPConeT,
+    n::Integer,
+    nnzin::Vector{Cint},
+    row::Vector{Cint},
+    aval::Vector{Cdouble},
+)
     @assert length(row) == length(aval)
-    @dsdp_ccall LPConeSetData (LPConeT, Cint, Ptr{Cint}, Ptr{Cint}, Ptr{Cdouble}) lpcone n nnzin row aval
+    @dsdp_ccall LPConeSetData (
+        LPConeT,
+        Cint,
+        Ptr{Cint},
+        Ptr{Cint},
+        Ptr{Cdouble},
+    ) lpcone n nnzin row aval
 end
 
-function SetData2(arg1::LPConeT, arg2::Integer, arg3::Vector{Cint}, arg4::Vector{Cint}, arg5::Vector{Cdouble})
-    @dsdp_ccall LPConeSetData2 (LPConeT, Cint, Ptr{Cint}, Ptr{Cint}, Ptr{Cdouble}) arg1 arg2 arg3 arg4 arg5
+function SetData2(
+    arg1::LPConeT,
+    arg2::Integer,
+    arg3::Vector{Cint},
+    arg4::Vector{Cint},
+    arg5::Vector{Cdouble},
+)
+    @dsdp_ccall LPConeSetData2 (
+        LPConeT,
+        Cint,
+        Ptr{Cint},
+        Ptr{Cint},
+        Ptr{Cdouble},
+    ) arg1 arg2 arg3 arg4 arg5
 end
 
-function GetData(arg1::LPConeT, arg2::Integer, arg3::Vector{Cdouble}, arg4::Integer)
+function GetData(
+    arg1::LPConeT,
+    arg2::Integer,
+    arg3::Vector{Cdouble},
+    arg4::Integer,
+)
     @dsdp_ccall LPConeGetData (LPConeT, Cint, Ptr{Cdouble}, Cint) arg1 arg2 arg3 arg4
 end
 
@@ -59,14 +95,14 @@ function GetXArray(lpcone::LPConeT)
     xout = Ref{Ptr{Cdouble}}()
     n = Ref{Cint}()
     @dsdp_ccall LPConeGetXArray (LPConeT, Ptr{Ptr{Cdouble}}, Ptr{Cint}) lpcone xout n
-    unsafe_wrap(Array, xout[], n[])
+    return unsafe_wrap(Array, xout[], n[])
 end
 
 function GetSArray(lpcone::LPConeT)
     sout = Ref{Ptr{Cdouble}}()
     n = Ref{Cint}()
     @dsdp_ccall LPConeGetSArray (LPConeT, Ref{Ptr{Cdouble}}, Ref{Cint}) lpcone sout n
-    unsafe_wrap(Array, sout[], n[])
+    return unsafe_wrap(Array, sout[], n[])
 end
 
 function GetDimension(arg1::LPConeT)

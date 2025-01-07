@@ -37,7 +37,7 @@ end
 function test_runtests()
     model = MOI.Utilities.CachingOptimizer(
         MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
-        MOI.instantiate(DSDP.Optimizer, with_bridge_type = Float64),
+        MOI.instantiate(DSDP.Optimizer; with_bridge_type = Float64),
     )
     # `Variable.ZerosBridge` makes dual needed by some tests fail.
     MOI.Bridges.remove_bridge(
@@ -47,7 +47,7 @@ function test_runtests()
     MOI.set(model, MOI.Silent(), true)
     MOI.Test.runtests(
         model,
-        MOI.Test.Config(
+        MOI.Test.Config(;
             rtol = 1e-2,
             atol = 1e-2,
             exclude = Any[
@@ -56,7 +56,7 @@ function test_runtests()
                 MOI.ObjectiveBound,
                 MOI.SolverVersion,
             ],
-        ),
+        );
         exclude = Regex[
             # ArgumentError: DSDP does not support problems with no constraint.
             # See https://github.com/jump-dev/MathOptInterface.jl/issues/1741#issuecomment-1057286739

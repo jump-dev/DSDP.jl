@@ -4,8 +4,8 @@
 # in the LICENSE.md file or at https://opensource.org/licenses/MIT.
 
 @testset "LPConeSetData doc example" begin
-    lpdvars =    Cint[ 3, 3, 2, 2, 1, 3,  1,  1]
-    lpdrows =    Cint[ 2, 0, 1, 0, 0, 1,  1,  2]
+    lpdvars = Cint[3, 3, 2, 2, 1, 3, 1, 1]
+    lpdrows = Cint[2, 0, 1, 0, 0, 1, 1, 2]
     lpcoefs = Cdouble[-1, 2, 3, 4, 6, 7, 10, 12]
     nnzin, row, aval = LPCone.buildlp(3, lpdvars, lpdrows, lpcoefs)
     @test nnzin isa Vector{Cint}
