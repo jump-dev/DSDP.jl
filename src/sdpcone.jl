@@ -1,8 +1,14 @@
+# Copyright (c) 2022: Joey Huchette, Benoît Legat, and contributors
+#
+# Use of this source code is governed by an MIT-style license that can be found
+# in the LICENSE.md file or at https://opensource.org/licenses/MIT.
+
 export SDPCone
 
 module SDPCone
 
 import ..@dsdp_ccall
+
 const SDPConeT = Ptr{Nothing}
 
 function SetBlockSize(sdpcone::SDPConeT, i::Integer, j::Integer)

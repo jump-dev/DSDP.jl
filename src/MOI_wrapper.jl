@@ -1,3 +1,8 @@
+# Copyright (c) 2022: Joey Huchette, Benoît Legat, and contributors
+#
+# Use of this source code is governed by an MIT-style license that can be found
+# in the LICENSE.md file or at https://opensource.org/licenses/MIT.
+
 import MathOptInterface as MOI
 const AFF = MOI.ScalarAffineFunction{Cdouble}
 const EQ = MOI.EqualTo{Cdouble}

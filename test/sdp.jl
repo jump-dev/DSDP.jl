@@ -1,3 +1,8 @@
+# Copyright (c) 2022: Joey Huchette, Benoît Legat, and contributors
+#
+# Use of this source code is governed by an MIT-style license that can be found
+# in the LICENSE.md file or at https://opensource.org/licenses/MIT.
+
 using Test, DSDP
 
 function test_sdp(tol = 1e-6)
@@ -17,14 +22,14 @@ function test_sdp(tol = 1e-6)
     derr = DSDP.GetFinalErrors(dsdp)
     @test derr != zeros(Cdouble, 6) # To check that it's not just the allocated vector and we actually got the errors
     @test derr ≈ zeros(Cdouble, 6) atol = tol
-    
+
     # P Infeasible: derr[1]
     # D Infeasible: derr[3]
     # Minimal P Eigenvalue: derr[2]
     # Minimal D Eigenvalue: 0.00, see `DSDP` source in `examples/readsdpa.c`
     # Relative P - D Objective values: derr[5]
     # Relative X Dot S: %4.2e: derr[6]
-    
+
     @test DSDP.StopReason(dsdp) == 1
     @test DSDP.GetSolutionType(dsdp) == 1
     @test DSDP.GetDObjective(dsdp) ≈ 2 rtol = tol
