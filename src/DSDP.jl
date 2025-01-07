@@ -13,7 +13,8 @@ macro dsdp_ccall(f, args...)
     quote
         # QuoteNode prevents the interpretion of the symbol
         # and leave it as a symbol
-        info = ccall(($(QuoteNode(f)), DSDP_jll.libdsdp), Cint, $(esc.(args)...))
+        info =
+            ccall(($(QuoteNode(f)), DSDP_jll.libdsdp), Cint, $(esc.(args)...))
         if !iszero(info)
             error("DSDP call $($(QuoteNode(f))) returned nonzero status $info.")
         end
@@ -29,33 +30,51 @@ include("lpcone.jl")
 function CreateLPCone(dsdp::DSDPT)
     lpcone = Ref{LPCone.LPConeT}()
     @dsdp_ccall DSDPCreateLPCone (DSDPT, Ref{LPCone.LPConeT}) dsdp lpcone
-    lpcone[]
+    return lpcone[]
 end
 
 include("sdpcone.jl")
 function CreateSDPCone(dsdp::DSDPT, n::Integer)
     sdpcone = Ref{SDPCone.SDPConeT}()
     @dsdp_ccall DSDPCreateSDPCone (DSDPT, Cint, Ref{SDPCone.SDPConeT}) dsdp n sdpcone
-    sdpcone[]
+    return sdpcone[]
 end
 
 include("bcone.jl")
 function CreateBCone(dsdp::DSDPT)
     bcone = Ref{BCone.BConeT}()
     @dsdp_ccall DSDPCreateBCone (DSDPT, Ref{BCone.BConeT}) dsdp bcone
-    bcone[]
+    return bcone[]
 end
 
 # Writes to `input.sdpa`
-function PrintData(dsdp::DSDPT, sdpcone::SDPCone.SDPConeT, lpcone::LPCone.LPConeT)
+function PrintData(
+    dsdp::DSDPT,
+    sdpcone::SDPCone.SDPConeT,
+    lpcone::LPCone.LPConeT,
+)
     @dsdp_ccall DSDPPrintData (DSDPT, SDPCone.SDPConeT, LPCone.LPConeT) dsdp sdpcone lpcone
 end
 
-function PrintSolution(fp::Libc.FILE,dsdp::DSDPT,sdpcone::SDPCone.SDPConeT,lpcone::LPCone.LPConeT)
-    @dsdp_ccall DSDPPrintSolution (Ptr{Cvoid}, DSDPT, SDPCone.SDPConeT, LPCone.LPConeT) fp dsdp sdpcone lpcone
+function PrintSolution(
+    fp::Libc.FILE,
+    dsdp::DSDPT,
+    sdpcone::SDPCone.SDPConeT,
+    lpcone::LPCone.LPConeT,
+)
+    @dsdp_ccall DSDPPrintSolution (
+        Ptr{Cvoid},
+        DSDPT,
+        SDPCone.SDPConeT,
+        LPCone.LPConeT,
+    ) fp dsdp sdpcone lpcone
 end
 
-function PrintSolution(dsdp::DSDPT,sdpcone::SDPCone.SDPConeT,lpcone::LPCone.LPConeT)
+function PrintSolution(
+    dsdp::DSDPT,
+    sdpcone::SDPCone.SDPConeT,
+    lpcone::LPCone.LPConeT,
+)
     # See https://discourse.julialang.org/t/access-c-stdout-in-julia/24187/2
     stdout = Libc.FILE(Libc.RawFD(1), "w")
     return PrintSolution(stdout, dsdp, sdpcone, lpcone)
