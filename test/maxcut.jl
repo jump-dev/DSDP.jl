@@ -1,3 +1,8 @@
+# Copyright (c) 2022: Joey Huchette, Benoît Legat, and contributors
+#
+# Use of this source code is governed by an MIT-style license that can be found
+# in the LICENSE.md file or at https://opensource.org/licenses/MIT.
+
 function di(u, v)
     u, v = max(u, v), min(u, v)
     div((u - Cint(1)) * u, Cint(2)) + (v - Cint(1))
