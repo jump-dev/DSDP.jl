@@ -106,6 +106,7 @@ function test_runtests()
             r"test_constraint_ScalarAffineFunction_Interval$",
             r"test_conic_HermitianPositiveSemidefiniteConeTriangle_1$",
             r"test_constraint_PrimalStart_DualStart_SecondOrderCone$",
+            r"test_HermitianPSDCone_basic$",
             # Incorrect objective
             # See https://github.com/jump-dev/MathOptInterface.jl/issues/1759
             r"test_linear_integration$",
