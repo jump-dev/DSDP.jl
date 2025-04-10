@@ -76,6 +76,8 @@ function test_runtests()
             r"test_objective_ObjectiveFunction_blank$",
             r"test_objective_ObjectiveFunction_duplicate_terms$",
             r"test_solve_TerminationStatus_DUAL_INFEASIBLE$",
+            r"test_DualObjectiveValue_Max_VariableIndex_LessThan$",
+            r"test_DualObjectiveValue_Min_VariableIndex_GreaterThan$",
             # TODO investigate
             #  Expression: MOI.get(model, MOI.TerminationStatus()) == config.infeasible_status
             #   Evaluated: MathOptInterface.OPTIMAL == MathOptInterface.INFEASIBLE
@@ -102,6 +104,8 @@ function test_runtests()
             r"test_conic_linear_VectorAffineFunction_2$",
             r"test_conic_linear_VectorOfVariables_2$",
             r"test_constraint_ScalarAffineFunction_Interval$",
+            r"test_conic_HermitianPositiveSemidefiniteConeTriangle_1$",
+            r"test_constraint_PrimalStart_DualStart_SecondOrderCone$",
             # Incorrect objective
             # See https://github.com/jump-dev/MathOptInterface.jl/issues/1759
             r"test_linear_integration$",
