@@ -234,11 +234,8 @@ const _SetWithDotProd = MOI.SetWithDotProducts{
     MOI.TriangleVectorization{Cdouble,MOI.LowRankMatrix{Cdouble}},
 }
 
-const SupportedSets = Union{
-    MOI.Nonnegatives,
-    MOI.PositiveSemidefiniteConeTriangle,
-    _SetWithDotProd,
-}
+const SupportedSets =
+    Union{MOI.Nonnegatives,MOI.PositiveSemidefiniteConeTriangle,_SetWithDotProd}
 
 function MOI.supports_add_constrained_variables(
     ::Optimizer,
@@ -287,7 +284,7 @@ function new_block(model::Optimizer, set::_SetWithDotProd)
         push!(model.varmap, (blk, 0, 0))
         push!(model.rank_one, set.vectors[i].matrix)
     end
-    new_block(model, set.set)
+    return new_block(model, set.set)
 end
 
 function _add_constrained_variables(optimizer::Optimizer, set::SupportedSets)
@@ -339,7 +336,12 @@ function constrain_variables_on_creation(
     return
 end
 
-function _setcoefficient!(dest::Optimizer, coef, constr::Integer, vi::MOI.VariableIndex)
+function _setcoefficient!(
+    dest::Optimizer,
+    coef,
+    constr::Integer,
+    vi::MOI.VariableIndex,
+)
     blk, i, j = varmap(dest, vi)
     rank_one = dest.rank_one[vi.value]
     if isnothing(rank_one)
@@ -350,7 +352,10 @@ function _setcoefficient!(dest::Optimizer, coef, constr::Integer, vi::MOI.Variab
             push!(dest.lpcoefs, coef)
         else
             sdp = dest.blk[blk]
-            push!(dest.sdpdinds[end][sdp], i + (j - 1) * dest.blockdims[blk] - 1)
+            push!(
+                dest.sdpdinds[end][sdp],
+                i + (j - 1) * dest.blockdims[blk] - 1,
+            )
             if i != j
                 coef /= 2
             end
@@ -358,7 +363,7 @@ function _setcoefficient!(dest::Optimizer, coef, constr::Integer, vi::MOI.Variab
         end
     else
         d = Cint(dest.blockdims[blk])
-        push!(dest.cached_ind, collect(Cint(0):(d - 1)))
+        push!(dest.cached_ind, collect(Cint(0):(d-1)))
         # We use `Add` and not `Set` because I think (if I interpret the name correctly) that would allow mixing with sparse matrices for the same block and constraint
         DSDP.SDPCone.SetARankOneMat(
             dest.sdpcone,
@@ -385,8 +390,27 @@ end
 function _set_A_matrices(m::Optimizer, i)
     for (blk, blkdim) in zip(m.blk, m.blockdims)
         if blkdim > 0 && !isempty(m.sdpdcoefs[end][blk])
-            @show (blk - 1, i, blkdim, 1.0, 0, m.sdpdinds[end][blk], m.sdpdcoefs[end][blk], length(m.sdpdcoefs[end][blk]))
-            SDPCone.SetASparseVecMat(m.sdpcone, blk - 1, i, blkdim, 1.0, 0, m.sdpdinds[end][blk], m.sdpdcoefs[end][blk], length(m.sdpdcoefs[end][blk]))
+            @show (
+                blk - 1,
+                i,
+                blkdim,
+                1.0,
+                0,
+                m.sdpdinds[end][blk],
+                m.sdpdcoefs[end][blk],
+                length(m.sdpdcoefs[end][blk]),
+            )
+            SDPCone.SetASparseVecMat(
+                m.sdpcone,
+                blk - 1,
+                i,
+                blkdim,
+                1.0,
+                0,
+                m.sdpdinds[end][blk],
+                m.sdpdcoefs[end][blk],
+                length(m.sdpdcoefs[end][blk]),
+            )
         end
     end
     return
@@ -416,12 +440,7 @@ function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
         index_map,
         MOI.PositiveSemidefiniteConeTriangle,
     )
-    constrain_variables_on_creation(
-        dest,
-        src,
-        index_map,
-        _SetWithDotProd,
-    )
+    constrain_variables_on_creation(dest, src, index_map, _SetWithDotProd)
     vis_src = MOI.get(src, MOI.ListOfVariableIndices())
     if length(vis_src) < length(index_map.var_map)
         _error(
