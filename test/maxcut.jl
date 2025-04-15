@@ -70,7 +70,7 @@ function maxcut(nnodes, edges)
     yy = zeros(nnodes)
     indd = zeros(Cint, nnodes + nedges)
     val = zeros(nnodes + nedges)
-    indd[nedges.+(1:nnodes)] = iptr
+    indd[nedges .+ (1:nnodes)] = iptr
     tval = 0.0
     for (i, (u, v, w)) in enumerate(edges)
         indd[i] = di(u, v)
