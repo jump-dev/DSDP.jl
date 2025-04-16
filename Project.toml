@@ -1,7 +1,7 @@
 name = "DSDP"
 uuid = "2714ae6b-e930-5b4e-9c21-d0bacf577842"
 repo = "https://github.com/jump-dev/DSDP.jl.git"
-version = "0.2.1"
+version = "0.3.0"
 
 [deps]
 DSDP_jll = "1065e140-e56c-5613-be8b-7480bf7138df"
@@ -11,7 +11,7 @@ MathOptInterface = "b8f27783-ece8-5eb3-8dc8-9495eed66fee"
 [compat]
 DSDP_jll = "0.0.1"
 MathOptInterface = "1"
-julia = "1.6"
+julia = "1.10"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
