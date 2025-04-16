@@ -20,9 +20,6 @@ jobs:
         arch: [x64]
     steps:
       - uses: actions/checkout@v4
-      - name: Install BLAS/LAPACK
-        if: matrix.os == 'ubuntu-latest'
-        run: sudo apt-get -y install liblapack-dev libopenblas-dev
       - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
