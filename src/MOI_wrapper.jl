@@ -4,6 +4,17 @@
 # in the LICENSE.md file or at https://opensource.org/licenses/MIT.
 
 import MathOptInterface as MOI
+import LowRankOpt as LRO
+
+const _RankOneMatrix{F<:AbstractVector{Cdouble},D<:AbstractArray{Cdouble,0}} =
+    LRO.Factorization{Cdouble,F,D}
+
+const _SetDotProd{F<:AbstractMatrix{Cdouble},D<:AbstractVector{Cdouble}} =
+    LRO.SetDotProducts{
+        LRO.WITH_SET,
+        MOI.PositiveSemidefiniteConeTriangle,
+        LRO.TriangleVectorization{Cdouble,_RankOneMatrix{F,D}},
+    }
 
 mutable struct Optimizer <: MOI.AbstractOptimizer
     dsdp::DSDPT
@@ -16,7 +27,7 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
     # * `d` means a symmetric `d x d` block
     blockdims::Vector{Int}
     # MOI variable index -> rank 1 matrix it corresponds to
-    rank_one::Vector{Union{Nothing,MOI.LowRankMatrix{Cdouble}}}
+    rank_one::Vector{Union{Nothing,_RankOneMatrix}}
     # To avoid it being free'd
     cached_ind::Vector{Vector{Cint}}
     varmap::Vector{Tuple{Int,Int,Int}} # Variable Index vi -> blk, i, j
@@ -48,7 +59,7 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
             1,
             Cdouble[],
             Int[],
-            Union{Nothing,MOI.LowRankMatrix{Cdouble}}[],
+            Union{Nothing,_RankOneMatrix}[],
             Vector{Cint}[],
             Tuple{Int,Int,Int}[],
             Int[],
@@ -229,13 +240,8 @@ end
 
 MOI.supports_add_constrained_variables(::Optimizer, ::Type{MOI.Reals}) = false
 
-const _SetWithDotProd = MOI.SetWithDotProducts{
-    MOI.PositiveSemidefiniteConeTriangle,
-    MOI.TriangleVectorization{Cdouble,MOI.LowRankMatrix{Cdouble}},
-}
-
 const SupportedSets =
-    Union{MOI.Nonnegatives,MOI.PositiveSemidefiniteConeTriangle,_SetWithDotProd}
+    Union{MOI.Nonnegatives,MOI.PositiveSemidefiniteConeTriangle,_SetDotProd}
 
 function MOI.supports_add_constrained_variables(
     ::Optimizer,
@@ -277,8 +283,7 @@ function new_block(
     return
 end
 
-function new_block(model::Optimizer, set::_SetWithDotProd)
-    println("______________________Low-Rank")
+function new_block(model::Optimizer, set::_SetDotProd)
     blk = length(model.blockdims) + 1
     for i in eachindex(set.vectors)
         push!(model.varmap, (blk, 0, 0))
@@ -390,16 +395,6 @@ end
 function _set_A_matrices(m::Optimizer, i)
     for (blk, blkdim) in zip(m.blk, m.blockdims)
         if blkdim > 0 && !isempty(m.sdpdcoefs[end][blk])
-            @show (
-                blk - 1,
-                i,
-                blkdim,
-                1.0,
-                0,
-                m.sdpdinds[end][blk],
-                m.sdpdcoefs[end][blk],
-                length(m.sdpdcoefs[end][blk]),
-            )
             SDPCone.SetASparseVecMat(
                 m.sdpcone,
                 blk - 1,
@@ -440,7 +435,7 @@ function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
         index_map,
         MOI.PositiveSemidefiniteConeTriangle,
     )
-    constrain_variables_on_creation(dest, src, index_map, _SetWithDotProd)
+    constrain_variables_on_creation(dest, src, index_map, _SetDotProd)
     vis_src = MOI.get(src, MOI.ListOfVariableIndices())
     if length(vis_src) < length(index_map.var_map)
         _error(
