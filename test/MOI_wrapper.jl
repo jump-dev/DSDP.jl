@@ -7,6 +7,7 @@ module TestDSDP
 
 using Test
 import MathOptInterface as MOI
+import LowRankOpt as LRO
 import DSDP
 
 function runtests()
@@ -169,6 +170,24 @@ function test_runtests()
     )
     return
 end
+
+function test_LRO_runtests()
+    T = Float64
+    model = MOI.instantiate(
+        DSDP.Optimizer,
+        with_bridge_type = T,
+        with_cache_type = T,
+    )
+    LRO.Bridges.add_all_bridges(model, T)
+    MOI.set(model, MOI.Silent(), true)
+    config = MOI.Test.Config(
+        rtol = 1e-2,
+        atol = 1e-2,
+    )
+    MOI.Test.runtests(model, config, test_module = LRO.Test)
+    return
+end
+
 
 end  # module
 
