@@ -10,7 +10,7 @@ import DSDP_jll
 using LinearAlgebra
 
 macro dsdp_ccall(f, args...)
-    quote
+    return quote
         # QuoteNode prevents the interpretion of the symbol
         # and leave it as a symbol
         info =

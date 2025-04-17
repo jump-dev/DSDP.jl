@@ -4,6 +4,17 @@
 # in the LICENSE.md file or at https://opensource.org/licenses/MIT.
 
 import MathOptInterface as MOI
+import LowRankOpt as LRO
+
+const _RankOneMatrix{F<:AbstractVector{Cdouble},D<:AbstractArray{Cdouble,0}} =
+    LRO.Factorization{Cdouble,F,D}
+
+const _SetDotProd{F<:AbstractMatrix{Cdouble},D<:AbstractVector{Cdouble}} =
+    LRO.SetDotProducts{
+        LRO.WITH_SET,
+        MOI.PositiveSemidefiniteConeTriangle,
+        LRO.TriangleVectorization{Cdouble,_RankOneMatrix{F,D}},
+    }
 
 mutable struct Optimizer <: MOI.AbstractOptimizer
     dsdp::DSDPT
@@ -15,6 +26,10 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
     # * `-d` means a diagonal block with diagonal of length `d`
     # * `d` means a symmetric `d x d` block
     blockdims::Vector{Int}
+    # MOI variable index -> rank 1 matrix it corresponds to
+    rank_one::Vector{Union{Nothing,_RankOneMatrix}}
+    # To avoid it being free'd
+    cached_ind::Vector{Vector{Cint}}
     varmap::Vector{Tuple{Int,Int,Int}} # Variable Index vi -> blk, i, j
     # If `blockdims[i] < 0`, `blk[i]` is the offset in `lpdvars`.
     # That is the **sum of length** of diagonal block before
@@ -32,6 +47,7 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
     sdpdinds::Vector{Vector{Vector{Cint}}}
     sdpdcoefs::Vector{Vector{Vector{Cdouble}}}
     y::Vector{Cdouble}
+    solve_time::Float64
     silent::Bool
     options::Dict{Symbol,Any}
 
@@ -43,6 +59,8 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
             1,
             Cdouble[],
             Int[],
+            Union{Nothing,_RankOneMatrix}[],
+            Vector{Cint}[],
             Tuple{Int,Int,Int}[],
             Int[],
             C_NULL,
@@ -53,6 +71,7 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
             Vector{Int}[],
             Vector{Cdouble}[],
             Cdouble[],
+            NaN,
             false,
             Dict{Symbol,Any}(),
         )
@@ -80,6 +99,8 @@ function MOI.empty!(optimizer::Optimizer)
     optimizer.objective_sign = 1
     empty!(optimizer.b)
     empty!(optimizer.blockdims)
+    empty!(optimizer.rank_one)
+    empty!(optimizer.cached_ind)
     empty!(optimizer.varmap)
     empty!(optimizer.blk)
     optimizer.nlpdrows = 0
@@ -89,6 +110,7 @@ function MOI.empty!(optimizer::Optimizer)
     empty!(optimizer.sdpdinds)
     empty!(optimizer.sdpdcoefs)
     empty!(optimizer.y)
+    optimizer.solve_time = NaN
     return
 end
 
@@ -219,7 +241,7 @@ end
 MOI.supports_add_constrained_variables(::Optimizer, ::Type{MOI.Reals}) = false
 
 const SupportedSets =
-    Union{MOI.Nonnegatives,MOI.PositiveSemidefiniteConeTriangle}
+    Union{MOI.Nonnegatives,MOI.PositiveSemidefiniteConeTriangle,_SetDotProd}
 
 function MOI.supports_add_constrained_variables(
     ::Optimizer,
@@ -241,6 +263,7 @@ function new_block(optimizer::Optimizer, set::MOI.Nonnegatives)
     blk = length(optimizer.blockdims)
     for i in 1:MOI.dimension(set)
         push!(optimizer.varmap, (blk, i, i))
+        push!(optimizer.rank_one, nothing)
     end
     return
 end
@@ -254,14 +277,26 @@ function new_block(
     for j in 1:set.side_dimension
         for i in 1:j
             push!(optimizer.varmap, (blk, i, j))
+            push!(optimizer.rank_one, nothing)
         end
     end
     return
 end
 
+function new_block(model::Optimizer, set::_SetDotProd)
+    blk = length(model.blockdims) + 1
+    for i in eachindex(set.vectors)
+        push!(model.varmap, (blk, 0, 0))
+        push!(model.rank_one, set.vectors[i].matrix)
+    end
+    return new_block(model, set.set)
+end
+
 function _add_constrained_variables(optimizer::Optimizer, set::SupportedSets)
     offset = length(optimizer.varmap)
     new_block(optimizer, set)
+    @assert length(optimizer.varmap) == offset + MOI.dimension(set)
+    @assert length(optimizer.rank_one) == offset + MOI.dimension(set)
     ci = MOI.ConstraintIndex{MOI.VectorOfVariables,typeof(set)}(offset + 1)
     return [MOI.VariableIndex(i) for i in offset .+ (1:MOI.dimension(set))], ci
 end
@@ -307,45 +342,59 @@ function constrain_variables_on_creation(
 end
 
 function _setcoefficient!(
-    m::Optimizer,
+    dest::Optimizer,
     coef,
     constr::Integer,
-    blk::Integer,
-    i::Integer,
-    j::Integer,
+    vi::MOI.VariableIndex,
 )
-    if m.blockdims[blk] < 0
-        @assert i == j
-        push!(m.lpdvars, constr + 1)
-        push!(m.lpdrows, m.blk[blk] + i - 1) # -1 because indexing starts at 0 in DSDP
-        push!(m.lpcoefs, coef)
-    else
-        sdp = m.blk[blk]
-        push!(m.sdpdinds[end][sdp], i + (j - 1) * m.blockdims[blk] - 1)
-        if i != j
-            coef /= 2
+    blk, i, j = varmap(dest, vi)
+    rank_one = dest.rank_one[vi.value]
+    if isnothing(rank_one)
+        if dest.blockdims[blk] < 0
+            @assert i == j
+            push!(dest.lpdvars, constr + 1)
+            push!(dest.lpdrows, dest.blk[blk] + i - 1) # -1 because indexing starts at 0 in DSDP
+            push!(dest.lpcoefs, coef)
+        else
+            sdp = dest.blk[blk]
+            push!(
+                dest.sdpdinds[end][sdp],
+                i + (j - 1) * dest.blockdims[blk] - 1,
+            )
+            if i != j
+                coef /= 2
+            end
+            push!(dest.sdpdcoefs[end][sdp], coef)
         end
-        push!(m.sdpdcoefs[end][sdp], coef)
+    else
+        d = Cint(dest.blockdims[blk])
+        push!(dest.cached_ind, collect(Cint(0):(d-1)))
+        # We use `Add` and not `Set` because I think (if I interpret the name correctly) that would allow mixing with sparse matrices for the same block and constraint
+        DSDP.SDPCone.SetARankOneMat(
+            dest.sdpcone,
+            dest.blk[blk] - 1,
+            constr,
+            d,
+            coef * rank_one.diagonal[],
+            0,
+            last(dest.cached_ind),
+            collect(eachcol(rank_one.factor)[]),
+            d,
+        )
     end
     return
 end
 
 # Loads objective coefficient α * vi
-function load_objective_term!(
-    optimizer::Optimizer,
-    index_map,
-    α,
-    vi::MOI.VariableIndex,
-)
-    blk, i, j = varmap(optimizer, vi)
+function load_objective_term!(optimizer::Optimizer, α, vi::MOI.VariableIndex)
     coef = optimizer.objective_sign * α
-    _setcoefficient!(optimizer, coef, 0, blk, i, j)
+    _setcoefficient!(optimizer, coef, 0, vi)
     return
 end
 
 function _set_A_matrices(m::Optimizer, i)
     for (blk, blkdim) in zip(m.blk, m.blockdims)
-        if blkdim > 0
+        if blkdim > 0 && !isempty(m.sdpdcoefs[end][blk])
             SDPCone.SetASparseVecMat(
                 m.sdpcone,
                 blk - 1,
@@ -386,6 +435,7 @@ function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
         index_map,
         MOI.PositiveSemidefiniteConeTriangle,
     )
+    constrain_variables_on_creation(dest, src, index_map, _SetDotProd)
     vis_src = MOI.get(src, MOI.ListOfVariableIndices())
     if length(vis_src) < length(index_map.var_map)
         _error(
@@ -464,8 +514,7 @@ function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
         _new_A_matrix(dest)
         for t in func.terms
             if !iszero(t.coefficient)
-                blk, i, j = varmap(dest, index_map[t.variable])
-                _setcoefficient!(dest, t.coefficient, k, blk, i, j)
+                _setcoefficient!(dest, t.coefficient, k, index_map[t.variable])
             end
         end
         _set_A_matrices(dest, k)
@@ -508,7 +557,6 @@ function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
             if !iszero(term.coefficient)
                 load_objective_term!(
                     dest,
-                    index_map,
                     term.coefficient,
                     index_map[term.variable],
                 )
@@ -533,7 +581,9 @@ function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
 end
 
 function MOI.optimize!(m::Optimizer)
+    start_time = time()
     Solve(m.dsdp)
+    m.solve_time = time() - start_time
     # Calling `ComputeX` not right after `Solve` seems to sometime cause segfaults or weird Heisenbug's
     # let's call it directly what `DSDP/examples/readsdpa.c` does
     ComputeX(m.dsdp)
@@ -542,6 +592,8 @@ function MOI.optimize!(m::Optimizer)
     map!(-, m.y, m.y) # The primal objective is Max in SDOI but Min in DSDP
     return
 end
+
+MOI.get(optimizer::Optimizer, ::MOI.SolveTimeSec) = optimizer.solve_time
 
 function MOI.get(m::Optimizer, ::MOI.RawStatusString)
     if m.dsdp == C_NULL

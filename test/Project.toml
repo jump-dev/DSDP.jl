@@ -1,0 +1,5 @@
+[deps]
+DSDP = "2714ae6b-e930-5b4e-9c21-d0bacf577842"
+LowRankOpt = "607ca3ad-272e-43c8-bcbe-fc71b56c935c"
+MathOptInterface = "b8f27783-ece8-5eb3-8dc8-9495eed66fee"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
