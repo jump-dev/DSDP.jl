@@ -41,7 +41,7 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
     sdpdcoefs::Vector{Vector{Vector{Cdouble}}}
     y::Vector{Cdouble}
     silent::Bool
-    options::Dict{Symbol,Any}
+    options::Dict{String,Any}
 
     function Optimizer()
         optimizer = new(
@@ -62,12 +62,15 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
             Vector{Cdouble}[],
             Cdouble[],
             false,
-            Dict{Symbol,Any}(),
+            Dict{String,Any}(),
         )
-        finalizer(_free, optimizer)
+        finalizer(MOI.empty!, optimizer)
         return optimizer
     end
 end
+
+Base.cconvert(::Type{Ptr{Cvoid}}, x::Optimizer) = x
+Base.unsafe_convert(::Type{Ptr{Cvoid}}, x::Optimizer) = x.dsdp
 
 # MOI.Silent
 
@@ -87,7 +90,12 @@ MOI.get(::Optimizer, ::MOI.SolverName) = "DSDP"
 # Empty
 
 function MOI.empty!(optimizer::Optimizer)
-    _free(optimizer)
+    if optimizer.dsdp != C_NULL
+        @check DSDPDestroy(optimizer)
+        optimizer.dsdp = C_NULL
+        optimizer.lpcone = C_NULL
+        optimizer.sdpcone = C_NULL
+    end
     optimizer.objective_constant = 0
     optimizer.objective_sign = 1
     empty!(optimizer.b)
@@ -119,101 +127,66 @@ function MOI.is_empty(optimizer::Optimizer)
            isempty(optimizer.sdpdcoefs)
 end
 
-function _free(m::Optimizer)
-    if m.dsdp != C_NULL
-        @check DSDPDestroy(m.dsdp)
-        m.dsdp = C_NULL
-        m.lpcone = C_NULL
-        m.sdpcone = C_NULL
+function MOI.supports(model::Optimizer, attr::MOI.RawOptimizerAttribute)
+    return attr.name in (
+        "MaxIts",
+        "GapTolerance",
+        "PNormTolerance",
+        "DualBound",
+        "StepTolerance",
+        "RTolerance",
+        "PTolerance",
+        "MaxTrustRadius",
+        "BarrierParameter",
+        "PotentialParameter",
+        "PenaltyParameter",
+        "ReuseMatrix",
+        "R0",
+        "ZBar",
+    )
+end
+
+function MOI.get(model::Optimizer, attr::MOI.RawOptimizerAttribute)
+    if !MOI.supports(model, attr)
+        throw(MOI.UnsupportedAttribute(attr))
     end
+    return get(model, attr.name, nothing)
+end
+
+function MOI.set(model::Optimizer, attr::MOI.RawOptimizerAttribute, value)
+    if attr.name == "MaxIts"
+        @check DSDPSetMaxIts(model, value)
+    elseif attr.name == "GapTolerance"
+        @check DSDPSetGapTolerance(model, value)
+    elseif attr.name == "PNormTolerance"
+        @check DSDPSetPNormTolerance(model, value)
+    elseif attr.name == "DualBound"
+        @check DSDPSetDualBound(model, value)
+    elseif attr.name == "StepTolerance"
+        @check DSDPSetStepTolerance(model, value)
+    elseif attr.name == "RTolerance"
+        @check DSDPSetRTolerance(model, value)
+    elseif attr.name == "PTolerance"
+        @check DSDPSetPTolerance(model, value)
+    elseif attr.name == "MaxTrustRadius"
+        @check DSDPSetMaxTrustRadius(model, value)
+    elseif attr.name == "BarrierParameter"
+        @check DSDPSetBarrierParameter(model, value)
+    elseif attr.name == "PotentialParameter"
+        @check DSDPSetPotentialParameter(model, value)
+    elseif attr.name == "PenaltyParameter"
+        @check DSDPSetPenaltyParameter(model, value)
+    elseif attr.name == "ReuseMatrix"
+        @check DSDPSetReuseMatrix(model, value)
+    elseif attr.name == "R0"
+        @check DSDPSetR0(model, value)
+    elseif attr.name == "ZBar"
+        @check DSDPSetZBar(model, value)
+    else
+        throw(MOI.UnsupportedAttribute(attr))
+    end
+    model.options[attr.name] = value
     return
-end
-
-# Taken from src/solver/dsdpsetup.c
-const gettable_options = Dict{Symbol,Union{Cint,Cdouble}}(
-    # Stopping parameters
-    :MaxIts => Cint(500),
-    :GapTolerance => 1.0e-7, # 100<=nconstrs<=3000 => 1e-6, nconstrs>3000 => 5e-6
-    :PNormTolerance => 1.0e30,
-    :DualBound => 1.0e20,
-    :StepTolerance => 5.0e-2,
-    :RTolerance => 1.0e-6,
-    :PTolerance => 1.0e-4,
-    # Solver options
-    :MaxTrustRadius => 1.0e10,
-    :BarrierParameter => -1.0,
-    :PotentialParameter => 5.0, # nconstrs>100 => 3.0
-    :PenaltyParameter => 1.0e8,
-    :ReuseMatrix => Cint(4), # 100<nconstrs<=1000 => 7, nconstrs>1000 => 10
-    # Handled separately
-    # :YBounds => (-1e7, 1e7),
-)
-# TODO
-# UsePenalty(dsdp,0)
-# UseDynamicRho(dsdp,1)
-# DSDPLogInfoAllow(iloginfo,0)
-# DSDPSetFixedVariable[s]
-# DSDPSetDualLowerBound
-
-const options = Dict{Symbol,Union{Cint,Cdouble}}(
-    # Solver options
-    :R0 => -1.0,
-    :ZBar => 1e10,
-)
-
-const options_setters = Dict{Symbol,Function}()
-
-abstract type Option <: MOI.AbstractOptimizerAttribute end
-
-abstract type GettableOption <: Option end
-
-MOI.supports(solver::Optimizer, ::Option) = true
-
-function MOI.set(m::Optimizer, o::Option, val)
-    # Need to set it in the dictionary so that it is also used when init! is called again
-    _dict_set!(m.options, o, val)
-    _call_set!(m.dsdp, o, val)r
-    return
-end
-
-MOI.get(m::Optimizer, o::Option) = _dict_get(m.options, o)
-
-function MOI.get(m::Optimizer, o::GettableOption)
-    if m.dsdp == C_NULL
-        return _dict_get(m.options, o)
-    end
-    # May be different from _dict_get for ReuseMatrix, GapTolerance and PotentialParameter since it depends on nconstrs
-    return _call_get(m.dsdp, o)
-end
-
-for (param, default) in gettable_options
-    getter, setter = Symbol("DSDPGet$param"), Symbol("DSDPSet$param")
-    T = typeof(default)
-    sym = QuoteNode(param)
-    @eval begin
-        struct $param <: GettableOption end
-        function _call_get(dsdp, ::$param)
-            ret = Ref{$T}()
-            @check $getter(dsdp, ret)
-            return ret[]
-        end
-        options_setters[$sym] = $setter
-        _dict_set!(options, ::$param, val) = options[$sym] = val
-        _dict_get(options, ::$param) = get(options, $sym, $default)
-        _call_set!(dsdp, ::$param, val) = @check $setter(dsdp, val)
-    end
-end
-
-for (param, default) in options
-    setter = Symbol("DSDPSet$param")
-    sym = QuoteNode(param)
-    @eval begin
-        struct $param <: Option end
-        options_setters[$sym] = $setter
-        _dict_set!(options, ::$param, val) = options[$sym] = val
-        _dict_get(options, ::$param) = get(options, $sym, $default)
-        _call_set!(dsdp, ::$param, val) = @check $setter(dsdp, val)
-    end
 end
 
 # MOI.supports
@@ -407,11 +380,11 @@ function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
     dest.dsdp = p[]
     # Set options
     for (option, value) in dest.options
-        options_setters[option](dest.dsdp, value)
+        MOI.set(dest, MOI.RawOptimizerAttribute(option), value)
     end
     if num_sdp > 0
         sdpcone = Ref{Ptr{Cvoid}}()
-        @check DSDPCreateSDPCone(dest.dsdp, num_sdp, sdpcone)
+        @check DSDPCreateSDPCone(dest, num_sdp, sdpcone)
         dest.sdpcone = sdpcone[]
         for (i, blk_dim) in enumerate(dest.blockdims)
             if blk_dim < 0
@@ -438,7 +411,7 @@ function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
                 ),
             )
         end
-        @check DSDPSetDualObjective(dest.dsdp, k, MOI.constant(set))
+        @check DSDPSetDualObjective(dest, k, MOI.constant(set))
         _new_A_matrix(dest)
         for t in func.terms
             if !iszero(t.coefficient)
@@ -471,10 +444,10 @@ function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
         dest.objective_constant = obj.constant
         _new_A_matrix(dest)
         for term in obj.terms
-            if iszero(term.coefficient)
+            if !iszero(term.coefficient)
                 vi = index_map[term.variable]
-                blk, i, j = optimizer.varmap[vi.value]
-                coef = optimizer.objective_sign * term.coefficient
+                blk, i, j = dest.varmap[vi.value]
+                coef = dest.objective_sign * term.coefficient
                 _setcoefficient!(dest, coef, 0, blk, i, j)
             end
         end
@@ -483,7 +456,7 @@ function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
     # Pass info to `dest.dsdp`
     if !isempty(dest.lpdvars)
         lpcone = Ref{Ptr{Cvoid}}()
-        @check DSDPCreateLPCone(dest.dsdp, lpcone)
+        @check DSDPCreateLPCone(dest, lpcone)
         dest.lpcone = lpcone[]
         nnzin, row, aval = _buildlp(
             length(dest.b) + 1,
@@ -493,7 +466,7 @@ function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
         )
         @check LPConeSetData(dest.lpcone, dest.nlpdrows, nnzin, row, aval)
     end
-    @check DSDPSetup(dest.dsdp)
+    @check DSDPSetup(dest)
     return index_map
 end
 
@@ -521,13 +494,13 @@ function _buildlp(nvars, lpdvars, lpdrows, lpcoefs)
 end
 
 function MOI.optimize!(m::Optimizer)
-    @check DSDPSetStandardMonitor(m.dsdp, !m.silent ? 1 : 0)
-    @check DSDPSolve(m.dsdp)
+    @check DSDPSetStandardMonitor(m, !m.silent ? 1 : 0)
+    @check DSDPSolve(m)
     # Calling `ComputeX` not right after `Solve` seems to sometime cause segfaults or weird Heisenbug's
     # let's call it directly what `DSDP/examples/readsdpa.c` does
-    @check DSDPComputeX(m.dsdp)
+    @check DSDPComputeX(m)
     m.y = zeros(Cdouble, length(m.b))
-    @check DSDPGetY(m.dsdp, m.y, length(m.y))
+    @check DSDPGetY(m, m.y, length(m.y))
     map!(-, m.y, m.y) # The primal objective is Max in SDOI but Min in DSDP
     return
 end
@@ -537,7 +510,7 @@ function MOI.get(m::Optimizer, ::MOI.RawStatusString)
         return "`optimize!` not called"
     end
     stop = Ref{DSDPTerminationReason}()
-    @check DSDPStopReason(m.dsdp, stop)
+    @check DSDPStopReason(m, stop)
     status = stop[]
     if status == DSDP_CONVERGED
         return "Converged"
@@ -566,11 +539,11 @@ function MOI.get(m::Optimizer, ::MOI.TerminationStatus)
         return MOI.OPTIMIZE_NOT_CALLED
     end
     stop = Ref{DSDPTerminationReason}()
-    @check DSDPStopReason(m.dsdp, stop)
+    @check DSDPStopReason(m, stop)
     status = stop[]
     if status == DSDP_CONVERGED
         sol = Ref{DSDPSolutionType}()
-        @check DSDPGetSolutionType(m.dsdp, sol)
+        @check DSDPGetSolutionType(m, sol)
         sol_status = sol[]
         if sol_status == DSDP_PDFEASIBLE
             return MOI.OPTIMAL
@@ -607,7 +580,7 @@ function MOI.get(m::Optimizer, attr::MOI.PrimalStatus)
         return MOI.NO_SOLUTION
     end
     sol = Ref{DSDPSolutionType}()
-    @check DSDPGetSolutionType(m.dsdp, sol)
+    @check DSDPGetSolutionType(m, sol)
     status = sol[]
     if status == DSDP_PDUNKNOWN
         return MOI.UNKNOWN_RESULT_STATUS
@@ -626,7 +599,7 @@ function MOI.get(m::Optimizer, attr::MOI.DualStatus)
         return MOI.NO_SOLUTION
     end
     sol = Ref{DSDPSolutionType}()
-    @check DSDPGetSolutionType(m.dsdp, sol)
+    @check DSDPGetSolutionType(m, sol)
     status = sol[]
     if status == DSDP_PDUNKNOWN
         return MOI.UNKNOWN_RESULT_STATUS
@@ -645,14 +618,14 @@ MOI.get(m::Optimizer, ::MOI.ResultCount) = m.dsdp == C_NULL ? 0 : 1
 function MOI.get(m::Optimizer, attr::MOI.ObjectiveValue)
     MOI.check_result_index_bounds(m, attr)
     ret = Ref{Cdouble}()
-    @check DSDPGetPPObjective(m.dsdp, ret)
+    @check DSDPGetPPObjective(m, ret)
     return m.objective_sign * ret[] + m.objective_constant
 end
 
 function MOI.get(m::Optimizer, attr::MOI.DualObjectiveValue)
     MOI.check_result_index_bounds(m, attr)
     ret = Ref{Cdouble}()
-    @check DSDPGetDDObjective(m.dsdp, ret)
+    @check DSDPGetDDObjective(m, ret)
     return m.objective_sign * ret[] + m.objective_constant
 end
 
