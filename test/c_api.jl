@@ -19,7 +19,6 @@ signz(t) = t < 0 ? -1 : 1
 # Apply the Goemens and Williamson randomized cut algorithm to the SDP relaxation of the max-cut problem
 function MaxCutRandomized(sdpcone, nnodes::Integer)
     ymin = Cdouble(0)
-
     vv = Vector{Cdouble}(undef, nnodes)
     tt = Vector{Cdouble}(undef, nnodes)
     cc = Vector{Cdouble}(undef, nnodes + 2)
@@ -49,9 +48,7 @@ function maxcut(nnodes, edges)
     dsdp = p[]
     DSDP.DSDPCreateSDPCone(dsdp, 1, p)
     sdpcone = p[]
-
     DSDP.SDPConeSetBlockSize(sdpcone, 0, nnodes)
-
     # Formulate the problem from the data
     # Diagonal elements equal 1.0
     # Create Constraint matrix A_i for i=1, ..., nnodes.
@@ -59,7 +56,6 @@ function maxcut(nnodes, edges)
     diag = ones(Cdouble, nnodes)
     N = Cint(1):Cint(nnodes)
     iptr = di.(N)
-
     for i in 1:nnodes
         DSDP.DSDPSetDualObjective(dsdp, i, 1.0)
         DSDP.SDPConeSetASparseVecMat(
@@ -74,7 +70,6 @@ function maxcut(nnodes, edges)
             1,
         )
     end
-
     # C matrix is the Laplacian of the adjacency matrix
     # Also compute a feasible initial point y such that S >= 0
     yy = zeros(nnodes)
@@ -91,7 +86,6 @@ function maxcut(nnodes, edges)
         yy[u] -= abs(w / 2)
         yy[v] -= abs(w / 2)
     end
-
     DSDP.SDPConeSetASparseVecMat(
         sdpcone,
         0,
@@ -114,14 +108,12 @@ function maxcut(nnodes, edges)
         pointer(val, nedges + 1),
         nnodes,
     )
-
     # Initial Point
     DSDP.DSDPSetR0(dsdp, 0.0)
     DSDP.DSDPSetZBar(dsdp, 10 * tval + 1.0)
     for i in 1:nnodes
         DSDP.DSDPSetY0(dsdp, i, 10 * yy[i])
     end
-
     # Get read to go
     DSDP.DSDPSetGapTolerance(dsdp, 0.001)
     DSDP.DSDPSetPotentialParameter(dsdp, 5)
@@ -184,7 +176,6 @@ function test_sdp(tol = 1e-6)
     DSDP.DSDPGetFinalErrors(dsdp, derr)
     @test derr != zeros(Cdouble, 6) # To check that it's not just the allocated vector and we actually got the errors
     @test derr ≈ zeros(Cdouble, 6) atol = tol
-
     # P Infeasible: derr[1]
     # D Infeasible: derr[3]
     # Minimal P Eigenvalue: derr[2]
@@ -240,7 +231,7 @@ end
     lpdvars = Cint[3, 3, 2, 2, 1, 3, 1, 1]
     lpdrows = Cint[2, 0, 1, 0, 0, 1, 1, 2]
     lpcoefs = Cdouble[-1, 2, 3, 4, 6, 7, 10, 12]
-    nnzin, row, aval = DSDP._buildlp(3, lpdvars, lpdrows, lpcoefs)
+    nnzin, row, aval = DSDP._build_lp(3, lpdvars, lpdrows, lpcoefs)
     @test nnzin isa Vector{Cint}
     @test nnzin == [0, 3, 5, 8]
     @test row isa Vector{Cint}
