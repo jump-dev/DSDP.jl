@@ -1,0 +1,13 @@
+[general]
+library_name = "libdsdp"
+output_file_path = "src/libdsdp.jl"
+print_using_CEnum = false
+prologue_file_path = "gen/prologue.jl"
+use_deterministic_symbol = true
+
+[codegen]
+opaque_as_mutable_struct = false
+use_ccall_macro = true
+
+[codegen.macro]
+macro_mode = "basic"

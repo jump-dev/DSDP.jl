@@ -1,0 +1,6 @@
+[deps]
+Clang = "40e3b903-d033-50b4-a0cc-940c62c95e31"
+DSDP_jll = "1065e140-e56c-5613-be8b-7480bf7138df"
+
+[compat]
+Clang = "0.17"

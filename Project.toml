@@ -1,14 +1,16 @@
 name = "DSDP"
 uuid = "2714ae6b-e930-5b4e-9c21-d0bacf577842"
-repo = "https://github.com/jump-dev/DSDP.jl.git"
 version = "0.2.1"
+repo = "https://github.com/jump-dev/DSDP.jl.git"
 
 [deps]
+CEnum = "fa961155-64e5-5f13-b03f-caf6b980ea82"
 DSDP_jll = "1065e140-e56c-5613-be8b-7480bf7138df"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 MathOptInterface = "b8f27783-ece8-5eb3-8dc8-9495eed66fee"
 
 [compat]
+CEnum = "0.5.0"
 DSDP_jll = "0.0.1"
 MathOptInterface = "1"
 julia = "1.10"

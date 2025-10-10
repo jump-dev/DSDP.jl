@@ -24,7 +24,7 @@ function test_solver_name()
     @test MOI.get(DSDP.Optimizer(), MOI.SolverName()) == "DSDP"
 end
 
-function test_options()
+function test_bad_options()
     param = MOI.RawOptimizerAttribute("bad_option")
     err = MOI.UnsupportedAttribute(param)
     @test_throws err MOI.set(
@@ -167,6 +167,42 @@ function test_runtests()
             r"test_conic_SecondOrderCone_out_of_order$",
         ],
     )
+    return
+end
+
+function test_options()
+    optimizer = MOI.Utilities.CachingOptimizer(
+        MOI.Utilities.Model{Float64}(),
+        DSDP.Optimizer(),
+    )
+    x, cx = MOI.add_constrained_variables(optimizer, MOI.Nonnegatives(1))
+    MOI.add_constraint(optimizer, 1.0x[1], MOI.EqualTo(1.0))
+    MOI.Utilities.attach_optimizer(optimizer)
+    for (option, default) in
+        Iterators.flatten((DSDP.options, DSDP.gettable_options))
+        opt = getfield(DSDP, option)
+        @test MOI.get(optimizer, opt()) == default
+    end
+    return
+end
+
+function test_moi(tol = 1e-6)
+    model = MOI.Utilities.Model{Float64}()
+    X, _ = MOI.add_constrained_variables(
+        model,
+        MOI.PositiveSemidefiniteConeTriangle(2),
+    )
+    c = MOI.add_constraint(model, 1.0 * X[2], MOI.EqualTo(1.0))
+    obj = 1.0 * X[1] + 1.0 * X[3]
+    MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+    MOI.set(model, MOI.ObjectiveFunction{typeof(obj)}(), obj)
+    dsdp = DSDP.Optimizer()
+    MOI.copy_to(dsdp, model)
+    MOI.optimize!(dsdp)
+    @test MOI.get(dsdp, MOI.ObjectiveValue()) ≈ 2 rtol = tol
+    @test MOI.get(dsdp, MOI.DualObjectiveValue()) ≈ 2 rtol = tol
+    @test MOI.get.(dsdp, MOI.VariablePrimal(), X) ≈ [1, 1, 1] rtol = tol
+    @test MOI.get(dsdp, MOI.ConstraintDual(), c) ≈ 2 rtol = tol
     return
 end
 
