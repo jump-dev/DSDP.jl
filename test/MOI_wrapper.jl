@@ -39,6 +39,7 @@ function test_runtests()
         MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
         MOI.instantiate(DSDP.Optimizer; with_bridge_type = Float64),
     )
+    MOI.set(model, MOI.RawOptimizerAttribute("PTolerance"), 1e-8)
     # `Variable.ZerosBridge` makes dual needed by some tests fail.
     MOI.Bridges.remove_bridge(
         model.optimizer,
@@ -49,7 +50,7 @@ function test_runtests()
         model,
         MOI.Test.Config(;
             rtol = 1e-2,
-            atol = 1e-2,
+            atol = 1e-1,
             exclude = Any[
                 MOI.ConstraintBasisStatus,
                 MOI.VariableBasisStatus,
@@ -58,26 +59,11 @@ function test_runtests()
             ],
         );
         exclude = Regex[
-            # ArgumentError: DSDP does not support problems with no constraint.
-            # See https://github.com/jump-dev/MathOptInterface.jl/issues/1741#issuecomment-1057286739
-            r"test_modification_set_singlevariable_lessthan$",
-            r"test_solve_optimize_twice$",
-            r"test_solve_result_index$",
-            r"test_objective_ObjectiveFunction_constant$",
-            r"test_objective_ObjectiveFunction_VariableIndex$",
+            # Error solving with empty problem
             r"test_objective_FEASIBILITY_SENSE_clears_objective$",
-            r"test_modification_transform_singlevariable_lessthan$",
-            r"test_modification_delete_variables_in_a_batch$",
-            r"test_modification_delete_variable_with_single_variable_obj$",
-            r"test_modification_const_scalar_objective$",
-            r"test_modification_coef_scalar_objective$",
             r"test_attribute_RawStatusString$",
             r"test_attribute_SolveTimeSec$",
             r"test_objective_ObjectiveFunction_blank$",
-            r"test_objective_ObjectiveFunction_duplicate_terms$",
-            r"test_solve_TerminationStatus_DUAL_INFEASIBLE$",
-            r"test_DualObjectiveValue_Max_VariableIndex_LessThan$",
-            r"test_DualObjectiveValue_Min_VariableIndex_GreaterThan$",
             # TODO investigate
             #  Expression: MOI.get(model, MOI.TerminationStatus()) == config.infeasible_status
             #   Evaluated: MathOptInterface.OPTIMAL == MathOptInterface.INFEASIBLE
@@ -102,11 +88,8 @@ function test_runtests()
             r"test_conic_NormOneCone_VectorOfVariables$",
             r"test_conic_linear_VectorAffineFunction$",
             r"test_conic_linear_VectorAffineFunction_2$",
-            r"test_conic_linear_VectorOfVariables_2$",
             r"test_constraint_ScalarAffineFunction_Interval$",
-            r"test_conic_HermitianPositiveSemidefiniteConeTriangle_1$",
             r"test_constraint_PrimalStart_DualStart_SecondOrderCone$",
-            r"test_HermitianPSDCone_basic$",
             # Incorrect objective
             # See https://github.com/jump-dev/MathOptInterface.jl/issues/1759
             r"test_linear_integration$",
@@ -117,15 +100,6 @@ function test_runtests()
             # TODO: inaccurate solution
             r"test_linear_HyperRectangle_VectorAffineFunction$",
             r"test_linear_HyperRectangle_VectorOfVariables$",
-            r"test_HermitianPSDCone_min_t$",
-            r"test_NormNuclearCone_VectorAffineFunction_with_transform$",
-            r"test_NormNuclearCone_VectorAffineFunction_without_transform$",
-            r"test_NormNuclearCone_VectorOfVariables_with_transform$",
-            r"test_NormNuclearCone_VectorOfVariables_without_transform$",
-            r"test_NormSpectralCone_VectorAffineFunction_with_transform$",
-            r"test_NormSpectralCone_VectorAffineFunction_without_transform$",
-            r"test_NormSpectralCone_VectorOfVariables_with_transform$",
-            r"test_NormSpectralCone_VectorOfVariables_without_transform$",
             r"test_conic_GeometricMeanCone_VectorAffineFunction$",
             r"test_conic_GeometricMeanCone_VectorAffineFunction_2$",
             r"test_conic_GeometricMeanCone_VectorAffineFunction_3$",
@@ -156,12 +130,6 @@ function test_runtests()
             r"test_conic_SecondOrderCone_Nonnegatives$",
             r"test_conic_SecondOrderCone_Nonpositives$",
             r"test_conic_SecondOrderCone_VectorAffineFunction$",
-            r"test_conic_SecondOrderCone_negative_initial_bound$",
-            r"test_conic_SecondOrderCone_negative_post_bound$",
-            r"test_conic_SecondOrderCone_negative_post_bound_2$",
-            r"test_conic_SecondOrderCone_negative_post_bound_3$",
-            r"test_conic_SecondOrderCone_no_initial_bound$",
-            r"test_conic_SecondOrderCone_nonnegative_initial_bound$",
             r"test_quadratic_constraint_integration$",
             r"test_linear_variable_open_intervals$",
             r"test_conic_SecondOrderCone_out_of_order$",

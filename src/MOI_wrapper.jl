@@ -157,38 +157,42 @@ function MOI.get(model::Optimizer, attr::MOI.RawOptimizerAttribute)
 end
 
 function MOI.set(model::Optimizer, attr::MOI.RawOptimizerAttribute, value)
-    if attr.name == "MaxIts"
+    model.options[attr.name] = value
+    return
+end
+
+function _set_inner_option(model, name, value)
+    if name == "MaxIts"
         @_check DSDPSetMaxIts(model, value)
-    elseif attr.name == "GapTolerance"
+    elseif name == "GapTolerance"
         @_check DSDPSetGapTolerance(model, value)
-    elseif attr.name == "PNormTolerance"
+    elseif name == "PNormTolerance"
         @_check DSDPSetPNormTolerance(model, value)
-    elseif attr.name == "DualBound"
+    elseif name == "DualBound"
         @_check DSDPSetDualBound(model, value)
-    elseif attr.name == "StepTolerance"
+    elseif name == "StepTolerance"
         @_check DSDPSetStepTolerance(model, value)
-    elseif attr.name == "RTolerance"
+    elseif name == "RTolerance"
         @_check DSDPSetRTolerance(model, value)
-    elseif attr.name == "PTolerance"
+    elseif name == "PTolerance"
         @_check DSDPSetPTolerance(model, value)
-    elseif attr.name == "MaxTrustRadius"
+    elseif name == "MaxTrustRadius"
         @_check DSDPSetMaxTrustRadius(model, value)
-    elseif attr.name == "BarrierParameter"
+    elseif name == "BarrierParameter"
         @_check DSDPSetBarrierParameter(model, value)
-    elseif attr.name == "PotentialParameter"
+    elseif name == "PotentialParameter"
         @_check DSDPSetPotentialParameter(model, value)
-    elseif attr.name == "PenaltyParameter"
+    elseif name == "PenaltyParameter"
         @_check DSDPSetPenaltyParameter(model, value)
-    elseif attr.name == "ReuseMatrix"
+    elseif name == "ReuseMatrix"
         @_check DSDPSetReuseMatrix(model, value)
-    elseif attr.name == "R0"
+    elseif name == "R0"
         @_check DSDPSetR0(model, value)
-    elseif attr.name == "ZBar"
+    elseif name == "ZBar"
         @_check DSDPSetZBar(model, value)
     else
         throw(MOI.UnsupportedAttribute(attr))
     end
-    model.options[attr.name] = value
     return
 end
 
@@ -356,10 +360,6 @@ function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
     end
     F, S = MOI.ScalarAffineFunction{Cdouble}, MOI.EqualTo{Float64}
     cis_src = MOI.get(src, MOI.ListOfConstraintIndices{F,S}())
-    if isempty(cis_src)
-        msg = "DSDP does not support problems with no constraint."
-        throw(ArgumentError(msg))
-    end
     resize!(dest.b, length(cis_src))
     dest.blk = zero(dest.blockdims)
     num_sdp = 0
@@ -376,9 +376,8 @@ function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
     p = Ref{Ptr{Cvoid}}()
     @_check DSDPCreate(length(dest.b), p)
     dest.dsdp = p[]
-    # Set options
     for (option, value) in dest.options
-        MOI.set(dest, MOI.RawOptimizerAttribute(option), value)
+        _set_inner_option(dest, option, value)
     end
     if num_sdp > 0
         sdpcone = Ref{Ptr{Cvoid}}()
@@ -393,25 +392,23 @@ function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
             @_check SDPConeSetStorageFormat(dest.sdpcone, blk - 1, UInt8('U'))
         end
     end
-    # TODO ComputeY0 as in examples/readsdpa.c
-    empty!(dest.y)
     for (k, ci_src) in enumerate(cis_src)
-        func = MOI.get(src, MOI.CanonicalConstraintFunction(), ci_src)
-        set = MOI.get(src, MOI.ConstraintSet(), ci_src)
-        f_k = MOI.constant(func)
+        f = MOI.get(src, MOI.CanonicalConstraintFunction(), ci_src)
+        s = MOI.get(src, MOI.ConstraintSet(), ci_src)
+        f_k = MOI.constant(f)
         if !iszero(f_k)
             throw(MOI.ScalarFunctionConstantNotZero{Cdouble,F,S}(f_k))
         end
-        @_check DSDPSetDualObjective(dest, k, MOI.constant(set))
+        @_check DSDPSetDualObjective(dest, k, MOI.constant(s))
         _new_A_matrix(dest)
-        for t in func.terms
+        for t in f.terms
             if !iszero(t.coefficient)
                 blk, i, j = dest.varmap[index_map[t.variable].value]
                 _set_coefficient(dest, t.coefficient, k, blk, i, j)
             end
         end
         _set_A_matrices(dest, k)
-        dest.b[k] = MOI.constant(set)
+        dest.b[k] = MOI.constant(s)
         index_map[ci_src] = MOI.ConstraintIndex{F,S}(k)
     end
     # Throw error for variable attributes
@@ -524,16 +521,10 @@ const _SOLUTION_TYPE_MAP = Dict(
     ),
     DSDP_PDFEASIBLE =>
         (MOI.OPTIMAL, MOI.FEASIBLE_POINT, MOI.FEASIBLE_POINT),
-    DSDP_UNBOUNDED => (
-        MOI.INFEASIBLE,
-        MOI.INFEASIBLE_POINT,
-        MOI.INFEASIBILITY_CERTIFICATE,
-    ),
-    DSDP_INFEASIBLE => (
-        MOI.DUAL_INFEASIBLE,
-        MOI.INFEASIBILITY_CERTIFICATE,
-        MOI.INFEASIBLE_POINT,
-    ),
+    # DSDP_UNBOUNDED means that (D) is unbounded, so (P) is infeasible
+    DSDP_UNBOUNDED => (MOI.INFEASIBLE, MOI.NO_SOLUTION, MOI.NO_SOLUTION),
+    # DSDP_INFEASIBLE means that (D) is infeasible
+    DSDP_INFEASIBLE => (MOI.DUAL_INFEASIBLE, MOI.NO_SOLUTION, MOI.NO_SOLUTION),
 )
 
 function MOI.get(model::Optimizer, ::MOI.TerminationStatus)
