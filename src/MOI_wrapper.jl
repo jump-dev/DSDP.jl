@@ -705,32 +705,44 @@ function _get_array(x::SDPXBlock)
     return [v[i+(j-1)*x.dim] for j in 1:x.dim for i in 1:j]
 end
 
-struct XBlockMat <: BlockMat
-    model::Optimizer
-end
-
-function block(x::XBlockMat, i)
-    if x.model.blockdims[i] < 0
-        LPXBlock(x.model.lpcone, abs(x.model.blockdims[i]), x.model.blk[i])
-    else
-        SDPXBlock(x.model.sdpcone, x.model.blockdims[i], x.model.blk[i])
+function block(model::Optimizer, i)
+    if model.blockdims[i] < 0
+        return LPXBlock(model.lpcone, abs(model.blockdims[i]), model.blk[i])
     end
+    return SDPXBlock(model.sdpcone, model.blockdims[i], model.blk[i])
 end
 
-function block(model::Optimizer, ci::MOI.ConstraintIndex{MOI.VectorOfVariables})
-    return model.varmap[ci.value][1]
-end
-
-function _vectorize_block(M, blk::Integer, ::Type{MOI.Nonnegatives})
-    return LinearAlgebra.diag(block(M, blk))
-end
-
-function _vectorize_block(
-    M::AbstractMatrix{Cdouble},
-    blk::Integer,
-    ::Type{MOI.PositiveSemidefiniteConeTriangle},
+function MOI.get(
+    model::Optimizer,
+    attr::MOI.VariablePrimal,
+    vi::MOI.VariableIndex,
 )
-    B = block(M, blk)
+    MOI.check_result_index_bounds(model, attr)
+    blk, i, j = model.varmap[vi.value]
+    return block(model, blk)[i, j]
+end
+
+function MOI.get(
+    model::Optimizer,
+    attr::MOI.ConstraintPrimal,
+    ci::MOI.ConstraintIndex{MOI.VectorOfVariables,MOI.Nonnegatives},
+)
+    MOI.check_result_index_bounds(model, attr)
+    blk = model.varmap[ci.value][1]
+    return LinearAlgebra.diag(block(model, blk))
+end
+
+function MOI.get(
+    model::Optimizer,
+    attr::MOI.ConstraintPrimal,
+    ci::MOI.ConstraintIndex{
+        MOI.VectorOfVariables,
+        MOI.PositiveSemidefiniteConeTriangle,
+    },
+)
+    MOI.check_result_index_bounds(model, attr)
+    blk = model.varmap[ci.value][1]
+    B = block(model, blk)
     d = LinearAlgebra.checksquare(B)
     n = MOI.dimension(MOI.PositiveSemidefiniteConeTriangle(d))
     v = Vector{Cdouble}(undef, n)
@@ -743,25 +755,6 @@ function _vectorize_block(
     end
     @assert k == n
     return v
-end
-
-function MOI.get(
-    model::Optimizer,
-    attr::MOI.VariablePrimal,
-    vi::MOI.VariableIndex,
-)
-    MOI.check_result_index_bounds(model, attr)
-    blk, i, j = model.varmap[vi.value]
-    return block(XBlockMat(model), blk)[i, j]
-end
-
-function MOI.get(
-    model::Optimizer,
-    attr::MOI.ConstraintPrimal,
-    ci::MOI.ConstraintIndex{MOI.VectorOfVariables,S},
-) where {S<:Union{MOI.Nonnegatives,MOI.PositiveSemidefiniteConeTriangle}}
-    MOI.check_result_index_bounds(model, attr)
-    return _vectorize_block(XBlockMat(model), block(model, ci), S)
 end
 
 function MOI.get(
