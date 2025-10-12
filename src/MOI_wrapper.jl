@@ -502,28 +502,39 @@ function MOI.get(model::Optimizer, ::MOI.RawStatusString)
     end
     stop = Ref{DSDPTerminationReason}()
     @_check DSDPStopReason(model, stop)
-    status = stop[]
-    if status == DSDP_CONVERGED
-        return "Converged"
-    elseif status == DSDP_INFEASIBLE_START
-        return "Infeasible start"
-    elseif status == DSDP_SMALL_STEPS
-        return "Small steps"
-    elseif status == DSDP_INDEFINITE_SCHUR_MATRIX
-        return "Indefinite Schur matrix"
-    elseif status == DSDP_MAX_IT
-        return "Max iteration"
-    elseif status == DSDP_NUMERICAL_ERROR
-        return "Numerical error"
-    elseif status == DSDP_UPPERBOUND
-        return "Upperbound"
-    elseif status == DSDP_USER_TERMINATION
-        return "User termination"
-    else
-        @assert status == CONTINUE_ITERATING
-        return "Continue iterating"
-    end
+    return string(stop[])
 end
+
+const _TERMINATION_REASON_MAP = Dict(
+    DSDP_INFEASIBLE_START => MOI.OTHER_ERROR,
+    DSDP_SMALL_STEPS => MOI.SLOW_PROGRESS,
+    DSDP_INDEFINITE_SCHUR_MATRIX => MOI.NUMERICAL_ERROR,
+    DSDP_MAX_IT => MOI.ITERATION_LIMIT,
+    DSDP_NUMERICAL_ERROR => MOI.NUMERICAL_ERROR,
+    DSDP_UPPERBOUND => MOI.OBJECTIVE_LIMIT,
+    DSDP_USER_TERMINATION => MOI.INTERRUPTED,
+    CONTINUE_ITERATING => MOI.OTHER_ERROR,
+)
+
+const _SOLUTION_TYPE_MAP = Dict(
+    DSDP_PDUNKNOWN => (
+        MOI.OTHER_ERROR,
+        MOI.UNKNOWN_RESULT_STATUS,
+        MOI.UNKNOWN_RESULT_STATUS,
+    ),
+    DSDP_PDFEASIBLE =>
+        (MOI.OPTIMAL, MOI.FEASIBLE_POINT, MOI.FEASIBLE_POINT),
+    DSDP_UNBOUNDED => (
+        MOI.INFEASIBLE,
+        MOI.INFEASIBLE_POINT,
+        MOI.INFEASIBILITY_CERTIFICATE,
+    ),
+    DSDP_INFEASIBLE => (
+        MOI.DUAL_INFEASIBLE,
+        MOI.INFEASIBILITY_CERTIFICATE,
+        MOI.INFEASIBLE_POINT,
+    ),
+)
 
 function MOI.get(model::Optimizer, ::MOI.TerminationStatus)
     if model.dsdp == C_NULL
@@ -531,39 +542,12 @@ function MOI.get(model::Optimizer, ::MOI.TerminationStatus)
     end
     stop = Ref{DSDPTerminationReason}()
     @_check DSDPStopReason(model, stop)
-    status = stop[]
-    if status == DSDP_CONVERGED
+    if stop[] == DSDP_CONVERGED
         sol = Ref{DSDPSolutionType}()
         @_check DSDPGetSolutionType(model, sol)
-        sol_status = sol[]
-        if sol_status == DSDP_PDFEASIBLE
-            return MOI.OPTIMAL
-        elseif sol_status == DSDP_UNBOUNDED
-            return MOI.INFEASIBLE
-        elseif sol_status == DSDP_INFEASIBLE
-            return MOI.DUAL_INFEASIBLE
-        else
-            @assert sol_status == DSDP_PDUNKNOWN
-            return MOI.OTHER_ERROR
-        end
-    elseif status == DSDP_INFEASIBLE_START
-        return MOI.OTHER_ERROR
-    elseif status == DSDP_SMALL_STEPS
-        return MOI.SLOW_PROGRESS
-    elseif status == DSDP_INDEFINITE_SCHUR_MATRIX
-        return MOI.NUMERICAL_ERROR
-    elseif status == DSDP_MAX_IT
-        return MOI.ITERATION_LIMIT
-    elseif status == DSDP_NUMERICAL_ERROR
-        return MOI.NUMERICAL_ERROR
-    elseif status == DSDP_UPPERBOUND
-        return MOI.OBJECTIVE_LIMIT
-    elseif status == DSDP_USER_TERMINATION
-        return MOI.INTERRUPTED
-    else
-        @assert status == CONTINUE_ITERATING
-        return MOI.OTHER_ERROR
+        return _SOLUTION_TYPE_MAP[sol[]][1]
     end
+    return _TERMINATION_REASON_MAP[stop[]]
 end
 
 function MOI.get(model::Optimizer, attr::MOI.PrimalStatus)
@@ -572,17 +556,7 @@ function MOI.get(model::Optimizer, attr::MOI.PrimalStatus)
     end
     sol = Ref{DSDPSolutionType}()
     @_check DSDPGetSolutionType(model, sol)
-    status = sol[]
-    if status == DSDP_PDUNKNOWN
-        return MOI.UNKNOWN_RESULT_STATUS
-    elseif status == DSDP_PDFEASIBLE
-        return MOI.FEASIBLE_POINT
-    elseif status == DSDP_UNBOUNDED
-        return MOI.INFEASIBLE_POINT
-    else
-        @assert status == DSDP_INFEASIBLE
-        return MOI.INFEASIBILITY_CERTIFICATE
-    end
+    return _SOLUTION_TYPE_MAP[sol[]][2]
 end
 
 function MOI.get(model::Optimizer, attr::MOI.DualStatus)
@@ -591,17 +565,7 @@ function MOI.get(model::Optimizer, attr::MOI.DualStatus)
     end
     sol = Ref{DSDPSolutionType}()
     @_check DSDPGetSolutionType(model, sol)
-    status = sol[]
-    if status == DSDP_PDUNKNOWN
-        return MOI.UNKNOWN_RESULT_STATUS
-    elseif status == DSDP_PDFEASIBLE
-        return MOI.FEASIBLE_POINT
-    elseif status == DSDP_UNBOUNDED
-        return MOI.INFEASIBILITY_CERTIFICATE
-    else
-        @assert status == DSDP_INFEASIBLE
-        return MOI.INFEASIBLE_POINT
-    end
+    return _SOLUTION_TYPE_MAP[sol[]][3]
 end
 
 MOI.get(model::Optimizer, ::MOI.ResultCount) = model.dsdp == C_NULL ? 0 : 1
