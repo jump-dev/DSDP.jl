@@ -157,6 +157,9 @@ function MOI.get(model::Optimizer, attr::MOI.RawOptimizerAttribute)
 end
 
 function MOI.set(model::Optimizer, attr::MOI.RawOptimizerAttribute, value)
+    if !MOI.supports(model, attr)
+        throw(MOI.UnsupportedAttribute(attr))
+    end
     model.options[attr.name] = value
     return
 end
@@ -188,10 +191,9 @@ function _set_inner_option(model, name, value)
         @_check DSDPSetReuseMatrix(model, value)
     elseif name == "R0"
         @_check DSDPSetR0(model, value)
-    elseif name == "ZBar"
-        @_check DSDPSetZBar(model, value)
     else
-        throw(MOI.UnsupportedAttribute(attr))
+        @assert name == "ZBar"
+        @_check DSDPSetZBar(model, value)
     end
     return
 end
