@@ -1,3 +1,7 @@
+**Deprecation notice: the JuMP developers have stopped maintaining this wrapper
+because DSDP.jl has known correctness issues with free variables. Use one of the
+many other conic solvers instead.**
+
 # DSDP.jl
 
 [![Build Status](https://github.com/jump-dev/DSDP.jl/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/jump-dev/DSDP.jl/actions?query=workflow%3ACI)
