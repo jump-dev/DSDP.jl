@@ -11,11 +11,13 @@ MathOptInterface = "b8f27783-ece8-5eb3-8dc8-9495eed66fee"
 
 [compat]
 DSDP_jll = "0.0.1"
+LowRankOpt = "0.2"
 MathOptInterface = "1"
 julia = "1.10"
 
 [extras]
+Dualization = "191a621a-6537-11e9-281d-650236a99e60"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test"]
+test = ["Dualization", "Test"]

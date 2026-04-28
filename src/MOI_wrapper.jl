@@ -9,7 +9,7 @@ import LowRankOpt as LRO
 const _RankOneMatrix{F<:AbstractVector{Cdouble},D<:AbstractArray{Cdouble,0}} =
     LRO.Factorization{Cdouble,F,D}
 
-const _SetDotProd{F<:AbstractMatrix{Cdouble},D<:AbstractVector{Cdouble}} =
+const _SetDotProd{F<:AbstractVector{Cdouble},D<:AbstractArray{Cdouble,0}} =
     LRO.SetDotProducts{
         LRO.WITH_SET,
         MOI.PositiveSemidefiniteConeTriangle,
@@ -435,9 +435,15 @@ function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
         index_map,
         MOI.PositiveSemidefiniteConeTriangle,
     )
-    constrain_variables_on_creation(dest, src, index_map, _SetDotProd)
+    # `_SetDotProd` is a parametric UnionAll type, so we need to find the
+    # concrete type from the model's actual constraint types.
+    for (F, S) in MOI.get(src, MOI.ListOfConstraintTypesPresent())
+        if F == MOI.VectorOfVariables && S <: _SetDotProd
+            constrain_variables_on_creation(dest, src, index_map, S)
+        end
+    end
     vis_src = MOI.get(src, MOI.ListOfVariableIndices())
-    if length(vis_src) < length(index_map.var_map)
+    if length(vis_src) > length(index_map.var_map)
         _error(
             "Free variables are not supported by DSDP",
             "to bridge free variables into `x - y` where `x` and `y` are nonnegative.",
