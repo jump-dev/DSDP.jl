@@ -86,7 +86,6 @@ function test_runtests()
             r"test_solve_TerminationStatus_DUAL_INFEASIBLE$",
             r"test_DualObjectiveValue_Max_VariableIndex_LessThan$",
             r"test_DualObjectiveValue_Min_VariableIndex_GreaterThan$",
-            # ArgumentError: DSDP does not support problems with no constraint.
             r"test_conic_SecondOrderCone_negative_initial_bound$",
             r"test_conic_SecondOrderCone_negative_post_bound$",
             r"test_conic_SecondOrderCone_nonnegative_initial_bound$",
