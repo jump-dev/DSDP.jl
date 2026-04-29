@@ -131,7 +131,7 @@ function test_LRO_runtests()
         LRO.TriangleVectorization.([v1, v2]),
     )
     model = MOI.instantiate(
-        DSDP.Optimizer,
+        DSDP.Optimizer;
         with_bridge_type = T,
         with_cache_type = T,
     )
@@ -154,7 +154,6 @@ function test_LRO_runtests()
     @test MOI.get(model, MOI.ObjectiveValue()) ≈ T(4) atol = 1e-2
     return
 end
-
 
 end  # module
 
