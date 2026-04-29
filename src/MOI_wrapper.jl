@@ -369,16 +369,17 @@ function _setcoefficient!(
     else
         d = Cint(dest.blockdims[blk])
         push!(dest.cached_ind, collect(Cint(0):(d-1)))
-        # We use `Add` and not `Set` because I think (if I interpret the name correctly) that would allow mixing with sparse matrices for the same block and constraint
-        DSDP.SDPCone.SetARankOneMat(
+        # Use `Add` (not `Set`) so that multiple rank-one contributions
+        # to the same block and constraint accumulate instead of overwriting.
+        DSDP.SDPCone.AddARankOneMat(
             dest.sdpcone,
             dest.blk[blk] - 1,
             constr,
             d,
-            coef * rank_one.diagonal[],
+            coef * rank_one.scaling[],
             0,
             last(dest.cached_ind),
-            collect(eachcol(rank_one.factor)[]),
+            rank_one.factor,
             d,
         )
     end
