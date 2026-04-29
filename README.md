@@ -1,7 +1,3 @@
-**Deprecation notice: the JuMP developers have stopped maintaining this wrapper
-because DSDP.jl has known correctness issues with free variables. Use one of the
-many other conic solvers instead.**
-
 # DSDP.jl
 
 [![Build Status](https://github.com/jump-dev/DSDP.jl/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/jump-dev/DSDP.jl/actions?query=workflow%3ACI)
@@ -9,6 +5,11 @@ many other conic solvers instead.**
 
 [DSDP.jl](https://github.com/jump-dev/DSDP.jl) is a wrapper for the
 [DSDP](http://www.mcs.anl.gov/hs/software/DSDP/) solver.
+
+> [!warning]
+> DSDP uses the *dual-scaling algorithm* which makes it highly sensitive to the [Slater condition](https://en.wikipedia.org/wiki/Slater%27s_condition).
+> If your problem does not satisfy this condition, it [may report incorrect answers as `OPTIMAL`](https://github.com/jump-dev/DSDP.jl/issues/45).
+> See [Use with JuMP](use-with-jump) section for more details.
 
 It has two components:
 
@@ -42,11 +43,30 @@ section of the JuMP documentation.
 
 ## Use with JuMP
 
-To use DSDP with JuMP, use `DSDP.Optimizer`:
+To use DSDP with JuMP, use `DSDP.Optimizer`. It is recommended to
+remove the `Variable.FreeBridge` as will prevent the dual to have an
+interior solution which will break the
+[Slater condition](https://en.wikipedia.org/wiki/Slater%27s_condition)
+on which the dual-scaling algorithm used by DSDP heavily relies.
 ```julia
 using JuMP, DSDP
 model = Model(DSDP.Optimizer)
+remove_bridge(model, MOI.Bridges.Variable.FreeBridge)
 ```
+This will also remove support for free variable for your model. If your
+problem has free variables, it is recommended to dualize it.
+The dual operation of the `Variable.FreeBridge` is the `Constraint.SplitIntervalBridge`
+so you will have to remove it for the same reason:
+```julia
+using JuMP, Dualization, DSDP
+model = Model(dual_optimizer(DSDP.Optimizer))
+remove_bridge(model, MOI.Bridges.Constraint.SplitIntervalBridge)
+```
+This will also remove support for equality constraints for your model. If your
+model has equality constraints, prefer not adding a `dual_optimizer` layer.
+If your model has both free variables and equality constraints,
+you're out of luck, another solver not based on the dual-scaling algorithm may
+be more appropriate is there is no way to reformulate the model.
 
 ## MathOptInterface API
 
