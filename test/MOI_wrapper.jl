@@ -7,6 +7,7 @@ module TestDSDP
 
 using Test
 import MathOptInterface as MOI
+import LowRankOpt as LRO
 import DSDP
 
 function runtests()
@@ -85,7 +86,6 @@ function test_runtests()
             r"test_solve_TerminationStatus_DUAL_INFEASIBLE$",
             r"test_DualObjectiveValue_Max_VariableIndex_LessThan$",
             r"test_DualObjectiveValue_Min_VariableIndex_GreaterThan$",
-            # ArgumentError: DSDP does not support problems with no constraint.
             r"test_conic_SecondOrderCone_negative_initial_bound$",
             r"test_conic_SecondOrderCone_negative_post_bound$",
             r"test_conic_SecondOrderCone_nonnegative_initial_bound$",
@@ -105,6 +105,52 @@ function test_runtests()
             r"test_variable_solve_with_lowerbound$",
         ],
     )
+    return
+end
+
+function test_LRO_runtests()
+    # The LRO.Test tests (polynomial and moment) formulate problems with a
+    # free variable γ:
+    #   max γ  s.t.  [3-γ, -1-γ] ∈ SetDotProducts(PSD(2), [v₁v₁ᵀ, v₂v₂ᵀ])
+    # Since DSDP is a dual-only interior-point method, free variables
+    # (bridged as z⁺ - z⁻ with z⁺, z⁻ ≥ 0) create a degenerate dual with
+    # no strict interior, causing poor accuracy. See Anjos & Burer (2007),
+    # "On handling free variables in interior-point methods for conic linear
+    # optimization", SIAM J. Optim.
+    #
+    # Instead, we hardcode the equivalent problem with γ eliminated:
+    #   min ⟨v₁v₁ᵀ, X⟩  s.t.  ⟨v₁v₁ᵀ - v₂v₂ᵀ, X⟩ = 4,  X ≽ 0
+    # expressed via SetDotProducts{WITH_SET} as a variable constraint
+    # (no free variables needed).
+    T = Float64
+    v1 = LRO.positive_semidefinite_factorization(T[1, -1])
+    v2 = LRO.positive_semidefinite_factorization(T[1, 1])
+    set = LRO.SetDotProducts{LRO.WITH_SET}(
+        MOI.PositiveSemidefiniteConeTriangle(2),
+        LRO.TriangleVectorization.([v1, v2]),
+    )
+    model = MOI.instantiate(
+        DSDP.Optimizer;
+        with_bridge_type = T,
+        with_cache_type = T,
+    )
+    LRO.Bridges.add_all_bridges(model, T)
+    MOI.set(model, MOI.Silent(), true)
+    vars, cv = MOI.add_constrained_variables(model, set)
+    y1, y2 = vars[1], vars[2]
+    # y1 = ⟨v₁v₁ᵀ, X⟩, y2 = ⟨v₂v₂ᵀ, X⟩
+    # Constraint: y1 - y2 = 4 (from eliminating γ in y1 + γ = 3, y2 + γ = -1)
+    MOI.add_constraint(model, T(1) * y1 - T(1) * y2, MOI.EqualTo(T(4)))
+    MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+    MOI.set(
+        model,
+        MOI.ObjectiveFunction{MOI.ScalarAffineFunction{T}}(),
+        T(1) * y1,
+    )
+    MOI.optimize!(model)
+    @test MOI.get(model, MOI.TerminationStatus()) == MOI.OPTIMAL
+    # Optimal: y1 = 4 (= 3 - γ* = 3 - (-1)), y2 = 0 (= -1 - γ* = -1 - (-1))
+    @test MOI.get(model, MOI.ObjectiveValue()) ≈ T(4) atol = 1e-2
     return
 end
 
