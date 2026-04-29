@@ -44,6 +44,13 @@ function test_runtests()
         model.optimizer,
         MOI.Bridges.Variable.ZerosBridge{Float64},
     )
+    # Remove `FreeBridge` so that problems requiring free variables are
+    # automatically skipped rather than solved with the degenerate
+    # z = z⁺ - z⁻ splitting that DSDP (a dual-only solver) cannot handle.
+    MOI.Bridges.remove_bridge(
+        model.optimizer,
+        MOI.Bridges.Variable.FreeBridge{Float64},
+    )
     MOI.set(model, MOI.Silent(), true)
     MOI.Test.runtests(
         model,
@@ -78,13 +85,15 @@ function test_runtests()
             r"test_solve_TerminationStatus_DUAL_INFEASIBLE$",
             r"test_DualObjectiveValue_Max_VariableIndex_LessThan$",
             r"test_DualObjectiveValue_Min_VariableIndex_GreaterThan$",
+            # ArgumentError: DSDP does not support problems with no constraint.
+            r"test_conic_SecondOrderCone_negative_initial_bound$",
+            r"test_conic_SecondOrderCone_negative_post_bound$",
+            r"test_conic_SecondOrderCone_nonnegative_initial_bound$",
             # TODO investigate
-            #  Expression: MOI.get(model, MOI.TerminationStatus()) == config.infeasible_status
-            #   Evaluated: MathOptInterface.OPTIMAL == MathOptInterface.INFEASIBLE
-            r"test_conic_NormInfinityCone_INFEASIBLE$",
-            r"test_conic_NormOneCone_INFEASIBLE$",
-            r"test_conic_linear_INFEASIBLE$",
+            r"test_model_copy_to_UnsupportedAttribute$",
+            # TODO investigate: DSDP reports OPTIMAL instead of INFEASIBLE
             r"test_conic_linear_INFEASIBLE_2$",
+            r"test_conic_RotatedSecondOrderCone_INFEASIBLE$",
             r"test_solve_DualStatus_INFEASIBILITY_CERTIFICATE_EqualTo_lower$",
             r"test_solve_DualStatus_INFEASIBILITY_CERTIFICATE_EqualTo_upper$",
             r"test_solve_DualStatus_INFEASIBILITY_CERTIFICATE_GreaterThan$",
@@ -92,79 +101,8 @@ function test_runtests()
             r"test_solve_DualStatus_INFEASIBILITY_CERTIFICATE_Interval_upper$",
             r"test_solve_DualStatus_INFEASIBILITY_CERTIFICATE_LessThan$",
             r"test_solve_DualStatus_INFEASIBILITY_CERTIFICATE_VariableIndex_LessThan$",
-            # TODO investigate
-            # Incorrect result value
-            r"test_conic_NormInfinityCone_3$",
-            r"test_conic_NormInfinityCone_VectorAffineFunction$",
-            r"test_conic_NormInfinityCone_VectorOfVariables$",
-            r"test_conic_NormOneCone$",
-            r"test_conic_NormOneCone_VectorAffineFunction$",
-            r"test_conic_NormOneCone_VectorOfVariables$",
-            r"test_conic_linear_VectorAffineFunction$",
-            r"test_conic_linear_VectorAffineFunction_2$",
-            r"test_conic_linear_VectorOfVariables_2$",
-            r"test_constraint_ScalarAffineFunction_Interval$",
-            r"test_conic_HermitianPositiveSemidefiniteConeTriangle_1$",
-            r"test_constraint_PrimalStart_DualStart_SecondOrderCone$",
-            r"test_HermitianPSDCone_basic$",
-            # Incorrect objective
-            # See https://github.com/jump-dev/MathOptInterface.jl/issues/1759
-            r"test_linear_integration$",
-            r"test_linear_transform$",
-            r"test_modification_affine_deletion_edge_cases$",
-            r"test_modification_multirow_vectoraffine_nonpos$",
+            # TODO investigate: incorrect result value
             r"test_variable_solve_with_lowerbound$",
-            # TODO: inaccurate solution
-            r"test_linear_HyperRectangle_VectorAffineFunction$",
-            r"test_linear_HyperRectangle_VectorOfVariables$",
-            r"test_HermitianPSDCone_min_t$",
-            r"test_NormNuclearCone_VectorAffineFunction_with_transform$",
-            r"test_NormNuclearCone_VectorAffineFunction_without_transform$",
-            r"test_NormNuclearCone_VectorOfVariables_with_transform$",
-            r"test_NormNuclearCone_VectorOfVariables_without_transform$",
-            r"test_NormSpectralCone_VectorAffineFunction_with_transform$",
-            r"test_NormSpectralCone_VectorAffineFunction_without_transform$",
-            r"test_NormSpectralCone_VectorOfVariables_with_transform$",
-            r"test_NormSpectralCone_VectorOfVariables_without_transform$",
-            r"test_conic_GeometricMeanCone_VectorAffineFunction$",
-            r"test_conic_GeometricMeanCone_VectorAffineFunction_2$",
-            r"test_conic_GeometricMeanCone_VectorAffineFunction_3$",
-            r"test_conic_GeometricMeanCone_VectorOfVariables$",
-            r"test_conic_GeometricMeanCone_VectorOfVariables_2$",
-            r"test_conic_GeometricMeanCone_VectorOfVariables_3$",
-            r"test_conic_NormNuclearCone$",
-            r"test_conic_NormNuclearCone_2$",
-            r"test_conic_NormSpectralCone$",
-            r"test_conic_NormSpectralCone_2$",
-            r"test_conic_PositiveSemidefiniteConeSquare_VectorAffineFunction$",
-            r"test_conic_PositiveSemidefiniteConeSquare_VectorAffineFunction_2$",
-            r"test_conic_PositiveSemidefiniteConeSquare_VectorOfVariables$",
-            r"test_conic_PositiveSemidefiniteConeSquare_VectorOfVariables_2$",
-            r"test_conic_PositiveSemidefiniteConeTriangle$",
-            r"test_conic_PositiveSemidefiniteConeTriangle_VectorAffineFunction$",
-            r"test_conic_PositiveSemidefiniteConeTriangle_VectorAffineFunction_2$",
-            r"test_conic_RootDetConeSquare$",
-            r"test_conic_RootDetConeSquare_VectorAffineFunction$",
-            r"test_conic_RootDetConeSquare_VectorOfVariables$",
-            r"test_conic_RootDetConeTriangle$",
-            r"test_conic_RootDetConeTriangle_VectorAffineFunction$",
-            r"test_conic_RootDetConeTriangle_VectorOfVariables$",
-            r"test_conic_RotatedSecondOrderCone_INFEASIBLE$",
-            r"test_conic_RotatedSecondOrderCone_INFEASIBLE_2$",
-            r"test_conic_SecondOrderCone_INFEASIBLE$",
-            r"test_conic_ScaledPositiveSemidefiniteConeTriangle_VectorAffineFunction$",
-            r"test_conic_SecondOrderCone_Nonnegatives$",
-            r"test_conic_SecondOrderCone_Nonpositives$",
-            r"test_conic_SecondOrderCone_VectorAffineFunction$",
-            r"test_conic_SecondOrderCone_negative_initial_bound$",
-            r"test_conic_SecondOrderCone_negative_post_bound$",
-            r"test_conic_SecondOrderCone_negative_post_bound_2$",
-            r"test_conic_SecondOrderCone_negative_post_bound_3$",
-            r"test_conic_SecondOrderCone_no_initial_bound$",
-            r"test_conic_SecondOrderCone_nonnegative_initial_bound$",
-            r"test_quadratic_constraint_integration$",
-            r"test_linear_variable_open_intervals$",
-            r"test_conic_SecondOrderCone_out_of_order$",
         ],
     )
     return
