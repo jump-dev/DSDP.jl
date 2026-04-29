@@ -9,7 +9,7 @@
 > [!warning]
 > DSDP uses the *dual-scaling algorithm* which makes it highly sensitive to the [Slater condition](https://en.wikipedia.org/wiki/Slater%27s_condition).
 > If your problem does not satisfy this condition, it [may report incorrect answers as `OPTIMAL`](https://github.com/jump-dev/DSDP.jl/issues/45).
-> See [Use with JuMP](use-with-jump) section for more details.
+> See [Use with JuMP](#use-with-jump) section for more details.
 
 It has two components:
 
